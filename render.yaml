@@ -42,5 +42,6 @@ services:
 databases:
   - name: fqms-db
     plan: free
+    region: singapore
     databaseName: fqms_db
     user: fqms_user

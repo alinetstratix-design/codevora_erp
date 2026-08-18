@@ -26,10 +26,14 @@ php artisan config:clear || true
 php artisan route:clear || true
 php artisan view:clear || true
 
-# Generate APP_KEY if missing in .env
-if ! grep -q "^APP_KEY=base64:" /var/www/.env; then
-    echo "Generating APP_KEY..."
-    php artisan key:generate --force || true
+# Generate APP_KEY if missing in .env and not in environment
+if [ -z "$APP_KEY" ]; then
+    if ! grep -q "^APP_KEY=base64:" /var/www/.env; then
+        echo "Generating APP_KEY..."
+        php artisan key:generate --force || true
+    fi
+else
+    echo "APP_KEY provided by environment."
 fi
 
 # Run database migrations
