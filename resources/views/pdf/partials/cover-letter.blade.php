@@ -1,7 +1,27 @@
 <div class="cover-letter">
-    <div class="cover-recipient">
-        <strong>To</strong><br>
-        <strong>{{ $customer->name }}</strong>
+    <div class="cover-recipient" style="line-height: 1.5; margin-bottom: 20px;">
+        <strong style="font-size: 11pt; color: #1b305b;">To,</strong><br>
+        <strong style="font-size: 12pt; color: #0f172a;">{{ $customer->name }}</strong><br>
+        @if(!empty($customer->companyName))
+            <span>{{ $customer->companyName }}</span><br>
+        @endif
+        @if(!empty($customer->address))
+            <span>{{ $customer->address }}</span><br>
+        @endif
+        @if(!empty($customer->phone))
+            <span><strong>Phone:</strong> {{ $customer->phone }}</span>@if(!empty($customer->email)) | @endif
+        @endif
+        @if(!empty($customer->email))
+            <span><strong>Email:</strong> {{ $customer->email }}</span><br>
+        @elseif(!empty($customer->phone))
+            <br>
+        @endif
+        @if(!empty($customer->gstNumber))
+            <span><strong>GSTIN:</strong> {{ $customer->gstNumber }}</span><br>
+        @endif
+        @if(!empty($project->name) && $project->name !== 'Project' && $project->name !== 'Quotation Project')
+            <span><strong>Project Site:</strong> {{ $project->name }} @if(!empty($project->location))({{ $project->location }})@endif</span><br>
+        @endif
     </div>
 
     <p class="cover-para">Dear Customer,</p>

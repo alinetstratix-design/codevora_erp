@@ -6,22 +6,22 @@ use Tests\TestCase;
 use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Services\PDFService;
-use App\Services\QuotationCalculator;
+use App\Services\QuotationCalculationService;
 use App\Services\QuotationReportBuilder;
 
 class PDFViewRenderingTest extends TestCase
 {
     public function test_pdf_service_generates_pdf_using_report_dto_and_partials()
     {
-        $calculator = new QuotationCalculator();
+        $calculator = app(QuotationCalculationService::class);
         $builder = new QuotationReportBuilder($calculator);
         $pdfService = new PDFService($builder);
 
         $quotation = new Quotation([
-            'quotation_number' => 'SCL-QT-00001831',
-            'client_name' => 'AMBALA AIRFORCE',
-            'project_name' => 'AMBALA AIRFORCE',
-            'project_location' => 'AMBALA AIRFORCE',
+            'quotation_number' => 'QT-2026-0001',
+            'client_name' => 'Apex Infra Projects',
+            'project_name' => 'Commercial Tower A',
+            'project_location' => 'Sector 62, Noida',
             'quotation_date' => '2026-06-25',
             'valid_until' => '2026-07-25',
             'no_of_components' => 54,

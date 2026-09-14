@@ -61,10 +61,40 @@ class LookupSeeder extends Seeder
             ['type' => 'item_types', 'value' => 'door', 'label' => 'Heavy Sliding Door'],
 
             // Quotation Status
-            ['type' => 'quotation_status', 'value' => 'draft', 'label' => 'Draft'],
-            ['type' => 'quotation_status', 'value' => 'sent', 'label' => 'Sent'],
-            ['type' => 'quotation_status', 'value' => 'approved', 'label' => 'Approved'],
-            ['type' => 'quotation_status', 'value' => 'rejected', 'label' => 'Rejected'],
+            ['type' => 'quotation_status', 'value' => 'Draft', 'label' => 'Draft'],
+            ['type' => 'quotation_status', 'value' => 'Sent', 'label' => 'Sent'],
+            ['type' => 'quotation_status', 'value' => 'Approved', 'label' => 'Approved'],
+            ['type' => 'quotation_status', 'value' => 'Rejected', 'label' => 'Rejected'],
+
+            // GST Slabs
+            ['type' => 'gst_slabs', 'value' => '0', 'label' => '0%'],
+            ['type' => 'gst_slabs', 'value' => '5', 'label' => '5%'],
+            ['type' => 'gst_slabs', 'value' => '12', 'label' => '12%'],
+            ['type' => 'gst_slabs', 'value' => '18', 'label' => '18% (Standard GST)'],
+            ['type' => 'gst_slabs', 'value' => '28', 'label' => '28%'],
+
+            // Profile Colors
+            ['type' => 'profile_colors', 'value' => 'WHITE', 'label' => 'WHITE'],
+            ['type' => 'profile_colors', 'value' => 'BLACK', 'label' => 'BLACK'],
+            ['type' => 'profile_colors', 'value' => 'WOOD', 'label' => 'WOOD FINISH'],
+            ['type' => 'profile_colors', 'value' => 'GREY', 'label' => 'GREY'],
+
+            // Glass Types
+            ['type' => 'glass_types', 'value' => '5mm Clear Toughened', 'label' => '5mm Clear Toughened'],
+            ['type' => 'glass_types', 'value' => '6mm Clear Toughened', 'label' => '6mm Clear Toughened'],
+            ['type' => 'glass_types', 'value' => '8mm Clear Toughened', 'label' => '8mm Clear Toughened'],
+            ['type' => 'glass_types', 'value' => 'DGU (5+9A+5)', 'label' => 'DGU (5+9A+5)'],
+
+            // Hardware Brands
+            ['type' => 'hardware_brands', 'value' => 'CORA Hardware', 'label' => 'CORA Hardware'],
+            ['type' => 'hardware_brands', 'value' => 'Kinlong', 'label' => 'Kinlong'],
+            ['type' => 'hardware_brands', 'value' => 'Ozone', 'label' => 'Ozone'],
+
+            // Mesh Types
+            ['type' => 'mesh_types', 'value' => 'No', 'label' => 'No Mesh'],
+            ['type' => 'mesh_types', 'value' => 'Fiber', 'label' => 'Fiber Mesh'],
+            ['type' => 'mesh_types', 'value' => 'SS', 'label' => 'SS Mesh'],
+            ['type' => 'mesh_types', 'value' => 'Pleated', 'label' => 'Pleated Mesh'],
         ];
 
         foreach ($lookups as $lookup) {

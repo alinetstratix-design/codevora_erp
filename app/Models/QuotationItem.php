@@ -12,6 +12,7 @@ class QuotationItem extends Model
     protected $fillable = [
         'quotation_id',
         'product_id',
+        'design_id',
         'product_name',
         'position',
         'profile_brand',
@@ -53,6 +54,13 @@ class QuotationItem extends Model
         'profile_details',
         'accessories_details',
         'drawing_metadata',
+    // Costing Fields from Phase C
+        'bom_cost',
+        'additional_cost',
+        'cost_basis',
+        'margin_percent',
+        'margin_amount',
+        'line_total',
     ];
 
     protected $casts = [
@@ -72,8 +80,18 @@ class QuotationItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function design()
+    {
+        return $this->belongsTo(Design::class);
+    }
+
     public function sizes()
     {
         return $this->hasMany(QuotationItemSize::class);
+    }
+
+    public function boms()
+    {
+        return $this->hasMany(QuotationItemBom::class);
     }
 }

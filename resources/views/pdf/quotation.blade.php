@@ -8,20 +8,21 @@
     @include('pdf.partials.cover-letter', [
         'company' => $report->company,
         'customer' => $report->customer,
+        'project' => $report->project,
         'signature' => $report->signature,
         'enclosures' => $report->enclosures
     ])
 
     <div class="page-break"></div>
 
-    <!-- PAGES 2 TO 27: ITEM CARDS (EXACTLY 2 CARDS PER PAGE) -->
+    <!-- PAGES 2+: ITEM CARDS (EXACTLY 1 WORK QUOTE PER PAGE) -->
     @if(!empty($report->items))
         @foreach($report->items as $index => $item)
             
             @include('pdf.partials.item-card', ['item' => $item])
 
-            <!-- Exactly 2 items per A4 page layout rule -->
-            @if(($index + 1) % 2 == 0 && ($index + 1) < count($report->items))
+            <!-- Exactly 1 work quote per page -->
+            @if(($index + 1) < count($report->items))
                 <div class="page-break"></div>
             @endif
 

@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    Route::post('quotations/preview', [QuotationController::class, 'calculatePreview']);
     Route::apiResource('quotations', QuotationController::class);
     Route::post('quotations/upload-drawing', [QuotationController::class, 'uploadDrawing']);
     Route::get('quotations/{id}/pdf', [QuotationController::class, 'generatePdf']);
@@ -34,6 +35,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('products/{product}/bom-preview', [\App\Http\Controllers\Api\BomPreviewController::class, 'preview']);
+    
+    Route::get('designs', [\App\Http\Controllers\Api\DesignController::class, 'index']);
+    Route::get('products/{product}/designs', [\App\Http\Controllers\Api\DesignController::class, 'getByProduct']);
+    Route::get('designs/{design}', [\App\Http\Controllers\Api\DesignController::class, 'show']);
     
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('lookups', [LookupController::class, 'index']);

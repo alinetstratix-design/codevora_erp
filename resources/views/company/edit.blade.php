@@ -17,7 +17,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Company Name <span class="text-danger">*</span></label>
-                            <input type="text" name="company_name" class="form-control" value="{{ old('company_name', $setting->company_name ?? 'SHANI CORPORATION LIMITED') }}" required>
+                            <input type="text" name="company_name" class="form-control" value="{{ old('company_name', $setting->company_name ?? auth()->user()?->company?->name ?? '') }}" placeholder="Enter legal company name" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">GSTIN / GST Number</label>
@@ -28,22 +28,22 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Phone Number</label>
-                            <input type="text" name="phone" class="form-control" value="{{ old('phone', $setting->phone ?? '+91 9599543500') }}">
+                            <input type="text" name="phone" class="form-control" value="{{ old('phone', $setting->phone ?? '') }}" placeholder="+91 XXXXXXXXXX">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Email Address</label>
-                            <input type="email" name="email" class="form-control" value="{{ old('email', $setting->email ?? 'query@sclgroup.co') }}">
+                            <input type="email" name="email" class="form-control" value="{{ old('email', $setting->email ?? auth()->user()?->company?->email ?? '') }}" placeholder="contact@company.com">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Website URL</label>
-                            <input type="text" name="website" class="form-control" value="{{ old('website', $setting->website ?? 'www.sclgroup.co') }}">
+                            <input type="text" name="website" class="form-control" value="{{ old('website', $setting->website ?? '') }}" placeholder="https://example.com">
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Registered Office Address</label>
-                            <textarea name="address" class="form-control" rows="2">{{ old('address', $setting->address ?? 'D-42, E-42 & E-43 , Gopalpur Industrial Area , Sikandrabad , Bulandshar , Uttar Pradesh -203205') }}</textarea>
+                            <textarea name="address" class="form-control" rows="2" placeholder="Registered office address">{{ old('address', $setting->address ?? '') }}</textarea>
                         </div>
                     </div>
 

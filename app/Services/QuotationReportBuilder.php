@@ -26,9 +26,9 @@ use App\DTOs\QuotationReportDTO;
 
 class QuotationReportBuilder
 {
-    protected QuotationCalculator $calculator;
+    protected QuotationCalculationService $calculator;
 
-    public function __construct(QuotationCalculator $calculator)
+    public function __construct(QuotationCalculationService $calculator)
     {
         $this->calculator = $calculator;
     }
@@ -74,7 +74,10 @@ class QuotationReportBuilder
 
     public function buildCompany(Quotation $quotation): CompanyDTO
     {
-        $setting = $quotation->companySetting ?? CompanySetting::first();
+        $setting = $quotation->companySetting 
+            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
+            ?? CompanySetting::find($quotation->company_id) 
+            ?? CompanySetting::first();
         $data = $setting ? $setting->toArray() : [];
         return new CompanyDTO($data);
     }
@@ -82,22 +85,29 @@ class QuotationReportBuilder
     public function buildCustomer(Quotation $quotation): CustomerDTO
     {
         $cust = $quotation->customer;
+        $address = $quotation->address;
+        if (empty($address) && $cust) {
+            $parts = array_filter([$cust->address, $cust->city, $cust->state, $cust->pincode]);
+            $address = implode(', ', $parts);
+        }
         $data = [
-            'name' => $quotation->client_name ?? ($cust ? $cust->name : 'AMBALA AIRFORCE'),
-            'company_name' => $cust ? $cust->company_name : '',
-            'phone' => $cust ? $cust->phone : '',
-            'email' => $cust ? $cust->email : '',
-            'address' => $quotation->address ?? ($cust ? $cust->address : ''),
-            'gst_number' => $cust ? $cust->gst_number : '',
+            'name' => $quotation->client_name ?: ($cust ? $cust->name : ''),
+            'company_name' => $cust ? ($cust->company_name ?? '') : '',
+            'phone' => $cust ? ($cust->phone ?? '') : '',
+            'email' => $cust ? ($cust->email ?? '') : '',
+            'address' => $address ?: '',
+            'gst_number' => $cust ? ($cust->gst_number ?? '') : '',
         ];
         return new CustomerDTO($data);
     }
 
     public function buildProject(Quotation $quotation): ProjectDTO
     {
+        $projectName = $quotation->project_name ?? ($quotation->client_name ? ($quotation->client_name . ' Project') : 'Quotation Project');
+        $location = $quotation->project_location ?? ($quotation->address ?? ($quotation->customer ? $quotation->customer->address : ''));
         $data = [
-            'name' => $quotation->project_name ?? $quotation->client_name ?? 'AMBALA AIRFORCE',
-            'location' => $quotation->project_location ?? $quotation->address ?? 'AMBALA AIRFORCE',
+            'name' => $projectName,
+            'location' => $location ?: 'Site Location',
             'sales_person' => $quotation->sales_person ?? 'Authorized Signatory',
             'remarks' => $quotation->remarks ?? '',
         ];
@@ -106,13 +116,15 @@ class QuotationReportBuilder
 
     public function buildHeader(Quotation $quotation): QuotationHeaderDTO
     {
+        $projectName = $quotation->project_name ?? ($quotation->client_name ? ($quotation->client_name . ' Project') : 'Quotation Project');
+        $quoteNo = $quotation->quotation_number ?? $quotation->quote_no ?? ('QT-' . ($quotation->id ? str_pad($quotation->id, 5, '0', STR_PAD_LEFT) : date('Ymd')));
         $data = [
-            'quote_no' => $quotation->quotation_number ?? $quotation->quote_no ?? 'SCL-QT-00001831',
+            'quote_no' => $quoteNo,
             'date' => $quotation->quotation_date ?? $quotation->date ?? date('Y-m-d'),
             'valid_till' => $quotation->valid_until ?? $quotation->valid_till ?? date('Y-m-d', strtotime('+30 days')),
             'status' => $quotation->status ?? 'Draft',
             'opportunity_no' => $quotation->opportunity_no ?? '',
-            'project_name' => $quotation->project_name ?? $quotation->client_name ?? 'AMBALA AIRFORCE',
+            'project_name' => $projectName,
         ];
         return new QuotationHeaderDTO($data);
     }
@@ -134,8 +146,8 @@ class QuotationReportBuilder
         $basicValue = (float)($quotation->basic_value ?? $quotation->subtotal ?? 0);
         $grandTotal = (float)($quotation->grand_total ?? 0);
 
-        $avgExGst = $totalArea > 0 ? round($basicValue / $totalArea, 2) : (float)$quotation->avg_price_sqft_ex_gst;
-        $avgIncGst = $totalArea > 0 ? round($grandTotal / $totalArea, 2) : (float)$quotation->avg_price_sqft_inc_gst;
+        $avgExGst = (float)$quotation->avg_price_sqft_ex_gst;
+        $avgIncGst = (float)$quotation->avg_price_sqft_inc_gst;
 
         $data = [
             'no_of_components' => $noOfComponents,
@@ -150,18 +162,37 @@ class QuotationReportBuilder
 
     public function buildFinancials(Quotation $quotation): FinancialSummaryDTO
     {
-        $grandTotal = (float)($quotation->grand_total ?? 0);
-        $amountInWords = $quotation->amount_in_words ?? $this->calculator->amountInWords($grandTotal);
+        $subtotal = (float)($quotation->subtotal ?? $quotation->basic_value ?? 0);
+        $discount = (float)($quotation->discount ?? 0);
+        $transportation = (float)($quotation->transportation ?? $quotation->freight_charges ?? 0);
+        $installation = (float)($quotation->installation ?? $quotation->installation_cost ?? 0);
+        $taxableAmount = max(0, $subtotal - $discount + $transportation + $installation);
+
+        $gstPercent = (float)($quotation->gst_percent ?: ($quotation->tax_percent ?: 18));
+        if ($gstPercent <= 0) {
+            $gstPercent = 18.0;
+        }
+
+        $gstAmount = (float)($quotation->gst ?: ($quotation->tax_amount ?: 0));
+        if ($gstAmount <= 0 && $taxableAmount > 0) {
+            $gstAmount = round($taxableAmount * ($gstPercent / 100), 2);
+        }
+
+        $additionalCharges = (float)($quotation->additional_charges ?? 0);
+        $grandTotal = (float)($quotation->grand_total ?: ($taxableAmount + $gstAmount + $additionalCharges));
+        $amountInWords = $quotation->amount_in_words ?: $this->calculator->amountInWords($grandTotal);
 
         $data = [
-            'subtotal' => (float)($quotation->subtotal ?? 0),
-            'discount' => (float)($quotation->discount ?? 0),
+            'subtotal' => $subtotal,
+            'discount' => $discount,
             'discount_percent' => (float)($quotation->discount_percent ?? 0),
-            'transportation' => (float)($quotation->transportation ?? $quotation->freight_charges ?? 0),
-            'installation' => (float)($quotation->installation ?? $quotation->installation_cost ?? 0),
-            'gst_percent' => (float)($quotation->tax_percent ?? 18),
-            'gst' => (float)($quotation->gst ?? $quotation->tax_amount ?? 0),
-            'additional_charges' => (float)($quotation->additional_charges ?? 0),
+            'transportation' => $transportation,
+            'installation' => $installation,
+            'gst_percent' => $gstPercent,
+            'tax_percent' => $gstPercent,
+            'gst' => $gstAmount,
+            'tax_amount' => $gstAmount,
+            'additional_charges' => $additionalCharges,
             'grand_total' => $grandTotal,
             'amount_in_words' => $amountInWords,
         ];
@@ -178,23 +209,33 @@ class QuotationReportBuilder
         foreach ($quotation->items as $index => $item) {
             $itemData = $item->toArray();
             
-            // Generate SVG drawing
             $w = $item->width ?? $item->dimension_w ?? 1000;
             $h = $item->height ?? $item->dimension_h ?? 1000;
             $unit = $item->unit ?? 'mm';
-            $system = $item->profile_system ?? 'Casement Series';
+            $system = $item->profile_system ?? $item->profile_series ?? $item->system_name ?? 'Casement Series';
             $metadata = $item->drawing_metadata ?? [];
 
+            // Enforce Goal #9: Drawing and BOM geometry must come from the same authoritative geometry model.
+            // We ignore any frontend rasterized drawing_url and strictly use the backend SvgGenerator.
             $svgHtml = SvgGenerator::generateWindowDrawing($w, $h, $unit, $system, $metadata);
+            
             $drawing = new DrawingDTO($svgHtml, 'View From Inside', $metadata);
 
-            $profile = new ProfileDTO($item->profile_details ?? [], $system);
+            $profileDetails = $item->profile_details ?? [];
+            if (!isset($profileDetails['Profile Color']) && !empty($item->color ?? $item->profile_color)) {
+                $profileDetails['Profile Color'] = $item->color ?? $item->profile_color;
+            }
+            if (!isset($profileDetails['MeshType']) && !empty($item->mesh_type)) {
+                $profileDetails['MeshType'] = $item->mesh_type;
+            }
+            $profile = new ProfileDTO($profileDetails, $system);
             $glass = new GlassDTO($itemData);
             $hardware = new HardwareDTO($itemData);
             $accessory = new AccessoryDTO($item->accessories_details ?? [], $system);
 
             $itemData['item_code'] = $item->item_code ?? ('W' . ($index + 1));
             $itemData['position'] = $item->position ?? $itemData['item_code'];
+            $itemData['sizes'] = $item->sizes ? $item->sizes->toArray() : [];
 
             $items[] = new ItemDTO($itemData, $drawing, $profile, $glass, $hardware, $accessory);
         }
@@ -205,7 +246,10 @@ class QuotationReportBuilder
     public function buildTerms(Quotation $quotation): TermsDTO
     {
         $termsArray = is_array($quotation->terms_conditions) ? $quotation->terms_conditions : [];
-        $setting = $quotation->companySetting ?? CompanySetting::first();
+        $setting = $quotation->companySetting 
+            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
+            ?? CompanySetting::find($quotation->company_id) 
+            ?? CompanySetting::first();
         $prereqs = $setting && is_array($setting->installation_prerequisites) ? $setting->installation_prerequisites : [];
 
         return new TermsDTO($termsArray, $prereqs);
@@ -213,13 +257,22 @@ class QuotationReportBuilder
 
     public function buildBank(Quotation $quotation): BankDTO
     {
-        $bankDetails = is_array($quotation->bank_details) ? $quotation->bank_details : [];
+        $setting = $quotation->companySetting 
+            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
+            ?? CompanySetting::find($quotation->company_id) 
+            ?? CompanySetting::first();
+        $bankDetails = (!empty($quotation->bank_details) && is_array($quotation->bank_details)) 
+            ? $quotation->bank_details 
+            : ($setting && is_array($setting->bank_details) ? $setting->bank_details : []);
         return new BankDTO($bankDetails);
     }
 
     public function buildSignature(Quotation $quotation): SignatureDTO
     {
-        $setting = $quotation->companySetting ?? CompanySetting::first();
+        $setting = $quotation->companySetting 
+            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
+            ?? CompanySetting::find($quotation->company_id) 
+            ?? CompanySetting::first();
         $sigImage = $setting ? ($setting->authorized_signature ?? '') : '';
         return new SignatureDTO('Authorized Signatory', 'Signature of Customer', $sigImage);
     }

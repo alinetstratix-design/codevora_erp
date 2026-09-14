@@ -11,8 +11,8 @@ class ProjectDTO
 
     public function __construct(array $data = [])
     {
-        $this->name = $data['name'] ?? $data['project_name'] ?? 'AMBALA AIRFORCE';
-        $this->location = $data['location'] ?? $data['project_location'] ?? $data['address'] ?? 'AMBALA AIRFORCE';
+        $this->name = $data['name'] ?? $data['project_name'] ?? 'Project';
+        $this->location = $data['location'] ?? $data['project_location'] ?? $data['address'] ?? '';
         $this->salesPerson = $data['sales_person'] ?? 'Authorized Signatory';
         $this->remarks = $data['remarks'] ?? '';
     }

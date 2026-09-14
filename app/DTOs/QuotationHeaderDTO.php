@@ -17,7 +17,7 @@ class QuotationHeaderDTO
 
     public function __construct(array $data = [])
     {
-        $this->quoteNo = $data['quote_no'] ?? $data['quotation_number'] ?? 'SCL-QT-00001831';
+        $this->quoteNo = $data['quote_no'] ?? $data['quotation_number'] ?? ('QT-' . date('Ymd'));
         $this->date = $data['date'] ?? $data['quotation_date'] ?? date('Y-m-d');
         $this->formattedDate = Carbon::parse($this->date)->format('d-m-Y');
         
@@ -28,7 +28,7 @@ class QuotationHeaderDTO
         $this->status = $data['status'] ?? 'Draft';
         $this->opportunityNo = $data['opportunity_no'] ?? '';
         
-        $projectName = $data['project_name'] ?? 'AMBALA AIRFORCE';
+        $projectName = $data['project_name'] ?? 'Quotation Project';
         $this->formattedMetaBar = "Quote No. : {$this->quoteNo} / Project : {$projectName} / Date : {$this->formattedDate}";
     }
 

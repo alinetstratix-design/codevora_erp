@@ -10,7 +10,13 @@ class Customer extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted()
+    {
+        static::addGlobalScope(new \App\Scopes\CompanyScope);
+    }
+
     protected $fillable = [
+        'company_id',
         'customer_code',
         'name',
         'company_name',
@@ -27,4 +33,9 @@ class Customer extends Model
         'notes',
         'status',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
 }

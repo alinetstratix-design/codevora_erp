@@ -1,661 +1,1003 @@
 @extends('layouts.app')
 
-@section('title', 'Quotation Builder')
+@section('title', 'Quotation Studio')
 
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 text-primary"><i class="bi bi-file-earmark-diff"></i> EvA Commercial Quotation Builder</h5>
-        <a href="{{ route('quotations.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Quotations</a>
-    </div>
-    <div class="card-body">
-        <form id="quotationForm" action="{{ route('quotations.store') }}" method="POST">
-            @csrf
-            
-            <!-- Step 1: Customer Selection -->
-            <div class="step-section mb-4">
-                <h6 class="border-bottom pb-2 text-primary fw-bold"><i class="bi bi-person-fill"></i> Customer Details</h6>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Customer <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <select name="customer_id" id="customer_id" class="form-select" required>
-                                <option value="">-- Select Customer --</option>
-                                @foreach($customers as $c)
-                                    <option value="{{ $c->id }}" {{ (request('customer_id') == $c->id) ? 'selected' : '' }}>
-                                        {{ $c->name }} ({{ $c->company_name ?? 'Individual' }}) - {{ $c->phone }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
-                                <i class="bi bi-person-plus"></i> New
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label fw-bold">Quote Number</label>
-                        <input type="text" name="quote_no" class="form-control fw-bold text-primary" value="{{ 'SCL-QT-' . str_pad(rand(1, 99999), 8, '0', STR_PAD_LEFT) }}">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label fw-bold">Date</label>
-                        <input type="date" name="date" class="form-control" value="{{ date('Y-m-d') }}">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 2: Project Details -->
-            <div class="step-section mb-4">
-                <h6 class="border-bottom pb-2 text-primary fw-bold"><i class="bi bi-building"></i> Project & Delivery Information</h6>
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Project Name <span class="text-danger">*</span></label>
-                        <input type="text" name="project_name" class="form-control" value="AMBALA AIRFORCE" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Client / To Name <span class="text-danger">*</span></label>
-                        <input type="text" name="client_name" class="form-control" value="AMBALA AIRFORCE" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Project Location</label>
-                        <input type="text" name="project_location" class="form-control" value="AMBALA AIRFORCE">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Sales Person / Signatory</label>
-                        <input type="text" name="sales_person" class="form-control" value="Authorized Signatory">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Valid Until</label>
-                        <input type="date" name="valid_till" class="form-control" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Status</label>
-                        <select name="status" class="form-select">
-                            <option value="Draft">Draft</option>
-                            <option value="Sent">Sent</option>
-                            <option value="Approved">Approved</option>
-                            <option value="Rejected">Rejected</option>
+<div class="container-fluid pb-5">
+    
+    <!-- TOP BAR: CUSTOMER & PROJECT -->
+    <div class="card shadow-sm border-0 rounded-3 mb-3" id="setup-panel">
+        <div class="card-header bg-white border-bottom-0 py-2 d-flex justify-content-between align-items-center cursor-pointer" onclick="toggleSetup()">
+            <h6 class="mb-0 text-primary fw-bold" style="font-family: 'Inter', sans-serif;">
+                <i class="bi bi-person-workspace me-2"></i> Project Details
+            </h6>
+            <span id="setup-summary" class="text-muted small fw-semibold d-none"></span>
+            <i class="bi bi-chevron-up text-muted small" id="setup-chevron"></i>
+        </div>
+        <div class="card-body px-3 pb-3 pt-0" id="setup-body">
+            <form id="setupForm">
+                @csrf
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Customer</label>
+                        <select name="customer_id" id="customer_id" class="form-select form-select-sm shadow-sm border-0 bg-light" onchange="onCustomerSelect(this)" required>
+                            <option value="">-- Select Customer --</option>
+                            @foreach($customers as $c)
+                                <option value="{{ $c->id }}" data-phone="{{ $c->phone }}" data-email="{{ $c->email }}" data-address="{{ $c->address }}">{{ $c->name }} ({{ $c->company_name ?? 'Individual' }})</option>
+                            @endforeach
                         </select>
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Project Name</label>
+                        <input type="text" name="project_name" id="project_name" class="form-control form-control-sm shadow-sm border-0 bg-light" placeholder="e.g. Luxury Villa" value="" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Client / To Name</label>
+                        <input type="text" name="client_name" id="client_name" class="form-control form-control-sm shadow-sm border-0 bg-light" placeholder="Client or Company Name" value="" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Quote No</label>
+                        <input type="text" name="quote_no" id="quote_no" class="form-control form-control-sm shadow-sm border-0 bg-light text-primary fw-bold" value="{{ 'QT-' . date('Ymd') . '-' . rand(100, 999) }}" readonly>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Date</label>
+                        <input type="date" name="date" id="date" class="form-control form-control-sm shadow-sm border-0 bg-light" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Project Site Address / Location</label>
+                        <input type="text" name="project_location" id="project_location" class="form-control form-control-sm shadow-sm border-0 bg-light" placeholder="Site Location / Installation Address" value="">
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Customer Contact Info</label>
+                        <div class="small py-1" id="customer-contact-info">
+                            <span class="text-muted fst-italic">Select customer to view contact details</span>
+                        </div>
+                    </div>
+                    <div class="col-12 text-end mt-3">
+                        <button type="button" class="btn btn-primary btn-sm px-4 rounded-pill shadow-sm hover-lift fw-semibold" onclick="startStudio()">Start Configuring <i class="bi bi-arrow-right"></i></button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN STUDIO PANEL -->
+    <div class="row g-3 d-none" id="studio-panel">
+        
+        <!-- LEFT: PRODUCT SELECTION GRID -->
+        <div class="col-lg-8 col-xl-9">
+            <div class="d-flex justify-content-between align-items-end mb-3">
+                <div>
+                    <h4 class="fw-bold text-dark mb-1">Product Catalog</h4>
+                    <p class="text-muted small mb-0">Select a system to start configuring dimensions and specifications.</p>
                 </div>
             </div>
+            
+            <div class="row g-3" id="product-list">
+                @foreach($products as $p)
+                    <div class="col-md-6 col-xxl-4">
+                        <div class="card border-0 shadow-sm hover-lift cursor-pointer h-100 overflow-hidden product-card" 
+                             id="prod-card-{{ $p->id }}" 
+                             onclick="openConfigModal({{ $p->id }}, '{{ addslashes($p->name) }}')">
+                            <div class="row g-0 h-100">
+                                <div class="col-3 bg-primary bg-opacity-10 d-flex align-items-center justify-content-center p-2 border-end border-white">
+                                    <i class="bi bi-boxes text-primary fs-3"></i>
+                                </div>
+                                <div class="col-9">
+                                    <div class="card-body d-flex flex-column h-100 p-2 px-3">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.95rem;">{{ $p->name }}</h6>
+                                        <p class="text-muted mb-2 text-truncate" style="font-size: 0.7rem; line-height: 1.2;">Premium {{ str_contains(strtolower($p->name), 'sliding') ? 'sliding system' : 'casement system' }}</p>
+                                        <div class="mt-auto text-end">
+                                            <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 rounded shadow-none" style="font-size: 0.65rem;">
+                                                Configure <i class="bi bi-arrow-right ms-1"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
 
-            <!-- Step 3: Window Items & Profile Specifications -->
-            <div class="step-section mb-4">
-                <h6 class="border-bottom pb-2 text-primary fw-bold"><i class="bi bi-grid-3x3"></i> Window & Door Profile Items</h6>
+        <!-- RIGHT: CART -->
+        <div class="col-lg-4 col-xl-3">
+            <div class="card shadow-sm border-0 rounded-3 h-100 d-flex flex-column">
+                <div class="card-header bg-white border-bottom pt-3 pb-2">
+                    <h6 class="fw-bold text-primary mb-0"><i class="bi bi-basket me-2"></i> Current Quote</h6>
+                </div>
                 
-                <div class="table-responsive mb-3">
-                    <table class="table table-bordered table-sm" id="itemsTable">
-                        <thead class="table-light text-center">
-                            <tr>
-                                <th width="20%">Code & Location</th>
-                                <th width="25%">Profile System Template</th>
-                                <th width="35%">Sizes (W x H mm) & Quantity</th>
-                                <th width="10%">Rate / Sq.Ft. (₹)</th>
-                                <th width="10%">Total Amount</th>
-                                <th width="3%"></th>
-                            </tr>
-                        </thead>
-                    </table>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="addItemRow()"><i class="bi bi-plus-circle"></i> Add Window Component Item</button>
-                </div>
-
-                <!-- Auto Financial Summary -->
-                <div class="row mt-4 border-top pt-3">
-                    <div class="col-md-6">
-                        <h6 class="text-primary fw-bold">Charges & Tax Configuration</h6>
-                        <div class="row mb-2">
-                            <div class="col-6">Discount (₹)</div>
-                            <div class="col-6"><input type="number" step="0.01" name="discount" id="val_discount" class="form-control form-control-sm calc-trigger" value="0"></div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-6">Transportation / Freight (₹)</div>
-                            <div class="col-6"><input type="number" step="0.01" name="transportation" id="val_transportation" class="form-control form-control-sm calc-trigger" value="0"></div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-6">Installation Cost (₹)</div>
-                            <div class="col-6"><input type="number" step="0.01" name="installation" id="val_installation" class="form-control form-control-sm calc-trigger" value="0"></div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-6">GST Slab</div>
-                            <div class="col-6">
-                                <select name="gst_percent" id="val_gst_percent" class="form-select form-select-sm calc-trigger">
-                                    <option value="0">0%</option>
-                                    <option value="5">5%</option>
-                                    <option value="12">12%</option>
-                                    <option value="18" selected>18% (Standard GST)</option>
-                                    <option value="28">28%</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-5 offset-md-1">
-                        <div class="card bg-light shadow-sm">
-                            <div class="card-body p-3">
-                                <h6 class="fw-bold text-primary border-bottom pb-2">EvA Auto Financial Summary</h6>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Total Components:</span>
-                                    <span id="txt_components" class="fw-bold">0 Pcs</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Total Area:</span>
-                                    <span id="txt_total_area" class="fw-bold">0.00 Sq.Ft.</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Basic Subtotal:</span>
-                                    <span id="txt_subtotal" class="fw-bold">₹0.00</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span id="lbl_gst">GST (18%):</span>
-                                    <span id="txt_gst" class="fw-bold text-danger">₹0.00</span>
-                                </div>
-                                <hr class="my-2">
-                                <div class="d-flex justify-content-between fs-5 text-primary">
-                                    <strong>Grand Total:</strong>
-                                    <strong id="txt_grand_total">₹0.00</strong>
-                                </div>
-                                <div class="d-flex justify-content-between small text-muted mt-2">
-                                    <span>Avg. Price / Sq.Ft. (ex-GST):</span>
-                                    <span id="txt_avg_ex">₹0.00</span>
-                                </div>
-                                <div class="d-flex justify-content-between small text-muted">
-                                    <span>Avg. Price / Sq.Ft. (inc-GST):</span>
-                                    <span id="txt_avg_inc">₹0.00</span>
-                                </div>
-                            </div>
-                        </div>
+                <div class="card-body p-0 overflow-auto" style="height: 65vh;" id="cart-items-container">
+                    <div class="text-center text-muted p-5 mt-5">
+                        <i class="bi bi-cart-x fs-1 opacity-50 mb-3 d-block"></i>
+                        <p class="mb-0 small">Quote is empty.</p>
                     </div>
                 </div>
-
-                <!-- Terms & Conditions -->
-                <div class="row mt-4">
-                    <div class="col-md-6">
-                        <label class="form-label text-primary fw-bold">Terms & Conditions</label>
-                        <textarea name="terms_conditions[]" class="form-control form-control-sm mb-1" rows="2" placeholder="Term 1"></textarea>
-                        <textarea name="terms_conditions[]" class="form-control form-control-sm mb-1" rows="2" placeholder="Term 2"></textarea>
+                
+                <div class="card-footer bg-white border-top rounded-bottom-3 p-3 mt-auto shadow-sm position-relative z-index-1">
+                    <div id="zero-cost-warning" class="alert alert-warning py-2 px-2 small fw-semibold d-none mb-2 border-warning" role="alert" style="font-size: 0.75rem;">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Missing material costs detected.
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-primary fw-bold">Payment & Bank Details</label>
-                        <textarea name="bank_details[]" class="form-control form-control-sm mb-1" rows="2" placeholder="50% Advance with Order"></textarea>
-                        <textarea name="bank_details[]" class="form-control form-control-sm mb-1" rows="2" placeholder="50% Before Delivery"></textarea>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted fw-semibold small">Basic Subtotal</span>
+                        <span class="text-dark fw-bold small" id="cart-subtotal">₹ 0.00</span>
                     </div>
-                </div>
-
-                <div id="formValidationError" class="alert alert-danger d-none mt-3 mb-0" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i> <span id="formValidationErrorText">Please complete all required fields marked with * before submitting.</span>
-                </div>
-
-                <div class="text-end mt-4">
-                    <button type="submit" id="submitBtn" class="btn btn-primary btn-lg px-5 shadow-sm"><i class="bi bi-file-earmark-pdf"></i> Save Quotation & Generate EvA PDF</button>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-semibold small">Total (Inc. GST)</span>
+                        <h4 class="text-primary fw-bold mb-0" id="cart-total">₹ 0.00</h4>
+                    </div>
+                    <button type="button" id="btn-save" class="btn btn-success btn-sm w-100 rounded-pill shadow-sm hover-lift fw-bold" onclick="saveQuotation()">
+                        Generate PDF <i class="bi bi-file-earmark-pdf ms-1"></i>
+                    </button>
                 </div>
             </div>
-
-        </form>
+        </div>
+        
     </div>
 </div>
 
-<!-- Modal Quick Add Customer -->
-<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form id="ajaxCustomerForm">
-      @csrf
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Quick Add Customer</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Customer Name *</label>
-            <input type="text" name="name" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Company Name</label>
-            <input type="text" name="company_name" class="form-control">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Mobile *</label>
-            <input type="text" name="phone" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Email</label>
-            <input type="email" name="email" class="form-control">
-          </div>
-          <div class="alert alert-danger d-none" id="customerError"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveCustomerBtn">Save Customer</button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Modal Advanced Specs -->
-<div class="modal fade" id="advancedSpecsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header bg-light">
-        <h5 class="modal-title text-primary"><i class="bi bi-sliders"></i> Detailed Specifications for <span id="specsItemCode" class="fw-bold"></span></h5>
+<!-- CONFIGURATION MODAL -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 rounded-4 shadow-lg">
+      <div class="modal-header bg-light border-bottom-0 py-3">
+        <h5 class="modal-title fw-bold text-dark" id="configModalLabel">
+            Configure: <span id="modal-product-name" class="text-primary"></span>
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <input type="hidden" id="specsActiveRowIndex">
-        
-        <!-- General Item Details -->
-        <h6 class="text-secondary border-bottom pb-2 mb-3"><i class="bi bi-info-circle"></i> General Item Details</h6>
-        <div class="row g-2 mb-4">
-            <div class="col-md-3"><label class="small fw-bold">Position / Name</label><input type="text" class="form-control form-control-sm spec-input-general" data-key="position" placeholder="e.g. W1"></div>
-            <div class="col-md-3"><label class="small fw-bold">Location</label><input type="text" class="form-control form-control-sm spec-input-general" data-key="location" placeholder="e.g. Master Bedroom"></div>
-            <div class="col-md-3"><label class="small fw-bold">Glass Specs</label><input type="text" class="form-control form-control-sm spec-input-general" data-key="glass_type" placeholder="e.g. (1) 5mm Clear Toughened"></div>
-            <div class="col-md-3"><label class="small fw-bold">Hardware Specs</label><input type="text" class="form-control form-control-sm spec-input-general" data-key="hardware_brand" placeholder="e.g. CORA Hardware"></div>
-            <div class="col-md-12 mt-2"><label class="small fw-bold">Remarks / Notes</label><input type="text" class="form-control form-control-sm spec-input-general" data-key="notes" placeholder="Any special instructions..."></div>
-        </div>
+      <div class="modal-body p-0 bg-white">
+          <div class="row g-0 h-100">
+              
+              <!-- Left: Design List & Visualizer -->
+              <div class="col-lg-7 border-end d-flex flex-column">
+                  <div class="p-3 border-bottom bg-light">
+                      <h6 class="fw-bold text-muted small text-uppercase mb-2">1. Select Design</h6>
+                      <div class="d-flex gap-2 overflow-auto custom-scrollbar pb-2" id="design-list">
+                          <!-- Injected via JS -->
+                      </div>
+                  </div>
+                  <div class="flex-grow-1 bg-white p-4 d-flex justify-content-center align-items-center position-relative shadow-inner" style="min-height: 400px;" id="svg-container">
+                      <!-- SVG Injected Here -->
+                      <div class="text-muted small"><i class="bi bi-arrow-up"></i> Select a design above</div>
+                  </div>
+              </div>
 
-        <div class="row">
-            <!-- Profile Details Column -->
-            <div class="col-md-6 border-end">
-                <h6 class="text-secondary border-bottom pb-2 mb-3"><i class="bi bi-bounding-box-circles"></i> Profile Details</h6>
-                <div class="row g-2">
-                    <div class="col-6"><label class="small fw-bold">Profile Color</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Profile Color" value="WHITE"></div>
-                    <div class="col-6"><label class="small fw-bold">MeshType</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="MeshType" value="No"></div>
-                    <div class="col-12"><label class="small fw-bold">Casement Sash</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Casement Sash"></div>
-                    <div class="col-12"><label class="small fw-bold">Casement Sash Ri</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Casement Sash Ri"></div>
-                    <div class="col-6"><label class="small fw-bold">Outer</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Outer"></div>
-                    <div class="col-6"><label class="small fw-bold">Outer Ri</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Outer Ri"></div>
-                    <div class="col-12"><label class="small fw-bold">Door Panel</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Door Panel"></div>
-                    <div class="col-6"><label class="small fw-bold">Sash Mullion</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Sash Mullion"></div>
-                    <div class="col-6"><label class="small fw-bold">Mullion Ri</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Mullion Ri"></div>
-                    <div class="col-12"><label class="small fw-bold">Coupler</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Coupler"></div>
-                    <div class="col-6"><label class="small fw-bold">Flymesh Sash</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Flymesh Sash"></div>
-                    <div class="col-6"><label class="small fw-bold">Flymesh Sash Ri</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Flymesh Sash Ri"></div>
-                    <div class="col-6"><label class="small fw-bold">Guide Rail</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Guide Rail"></div>
-                    <div class="col-6"><label class="small fw-bold">Interlock</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Interlock"></div>
-                    <div class="col-6"><label class="small fw-bold">Sliding Sash</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Sliding Sash"></div>
-                    <div class="col-6"><label class="small fw-bold">Sliding Sash Ri</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Sliding Sash Ri"></div>
-                    <div class="col-6"><label class="small fw-bold">Track</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Track"></div>
-                    <div class="col-6"><label class="small fw-bold">Track Ri</label><input type="text" class="form-control form-control-sm spec-input" data-group="profile" data-key="Track Ri"></div>
-                </div>
-            </div>
-            <!-- Accessories Details Column -->
-            <div class="col-md-6">
-                <h6 class="text-secondary border-bottom pb-2 mb-3"><i class="bi bi-tools"></i> Accessories Details</h6>
-                <div class="row g-2">
-                    <div class="col-6"><label class="small fw-bold">Locking</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Locking"></div>
-                    <div class="col-6"><label class="small fw-bold">Handle color</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Handle color" value="WHITE"></div>
-                    <div class="col-6"><label class="small fw-bold">Arm Restrictor</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Arm Restrictor"></div>
-                    <div class="col-6"><label class="small fw-bold">Cylinder</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Cylinder"></div>
-                    <div class="col-12"><label class="small fw-bold">Handle Type 1</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Handle Type 1"></div>
-                    <div class="col-12"><label class="small fw-bold">Handle Type 2</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Handle Type 2"></div>
-                    <div class="col-6"><label class="small fw-bold">Hinge 1</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Hinge 1"></div>
-                    <div class="col-6"><label class="small fw-bold">Hinge 2</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Hinge 2"></div>
-                    <div class="col-6"><label class="small fw-bold">Friction</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Friction"></div>
-                    <div class="col-6"><label class="small fw-bold">Roller</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Roller"></div>
-                    <div class="col-12"><label class="small fw-bold">Flymesh Handle Type</label><input type="text" class="form-control form-control-sm spec-input" data-group="accessories" data-key="Flymesh Handle Type"></div>
-                </div>
-            </div>
-        </div>
-      </div>
-      <div class="modal-footer bg-light">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="saveAdvancedSpecs()"><i class="bi bi-check-circle"></i> Save & Apply to Item</button>
+              <!-- Right: Specifications & Dimensions -->
+              <div class="col-lg-5 d-flex flex-column bg-light">
+                  <div class="p-4 flex-grow-1 overflow-auto">
+                      
+                      <!-- DYNAMIC SPECS -->
+                      <h6 class="fw-bold text-muted small text-uppercase mb-3 border-bottom pb-2">2. Specifications</h6>
+                      <div class="row g-2 mb-4">
+                          <div class="col-md-6">
+                              <label class="form-label small fw-semibold text-dark mb-1">Glass Type</label>
+                              <select class="form-select form-select-sm shadow-sm border-0" id="cfg-glass">
+                                  <option value="">Default (From BOM)</option>
+                                  <option value="5mm Clear">5mm Clear</option>
+                                  <option value="6mm Toughened">6mm Toughened</option>
+                                  <option value="8mm Toughened">8mm Toughened</option>
+                                  <option value="12mm Toughened">12mm Toughened</option>
+                                  <option value="DGU 24mm">DGU 24mm</option>
+                              </select>
+                          </div>
+                          <div class="col-md-6">
+                              <label class="form-label small fw-semibold text-dark mb-1">Mesh Type</label>
+                              <select class="form-select form-select-sm shadow-sm border-0" id="cfg-mesh">
+                                  <option value="">Default</option>
+                                  <option value="Fiber Mesh">Fiber Mesh</option>
+                                  <option value="SS Mesh">SS Mesh (Stainless Steel)</option>
+                              </select>
+                          </div>
+                          <div class="col-md-6">
+                              <label class="form-label small fw-semibold text-dark mb-1">Profile Color</label>
+                              <select class="form-select form-select-sm shadow-sm border-0" id="cfg-profile-color">
+                                  <option value="">Standard White</option>
+                                  <option value="Dark Grey">Dark Grey</option>
+                                  <option value="Wooden Finish">Wooden Finish</option>
+                                  <option value="Black">Black</option>
+                              </select>
+                          </div>
+                          <div class="col-md-6">
+                              <label class="form-label small fw-semibold text-dark mb-1">Hardware Color</label>
+                              <select class="form-select form-select-sm shadow-sm border-0" id="cfg-hardware-color">
+                                  <option value="">Default</option>
+                                  <option value="White">White</option>
+                                  <option value="Black">Black</option>
+                                  <option value="Silver">Silver</option>
+                              </select>
+                          </div>
+                      </div>
+
+                      <!-- DIMENSIONS -->
+                      <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                          <h6 class="fw-bold text-muted small text-uppercase mb-0">3. Dimensions</h6>
+                          <div class="d-flex align-items-center gap-1">
+                              <label class="small text-muted fw-bold mb-0 me-1" style="font-size: 0.72rem;">UNIT:</label>
+                              <select class="form-select form-select-sm border shadow-sm fw-bold text-primary py-0 px-2" id="cfg-unit" style="width: 85px; height: 26px; font-size: 0.8rem;" onchange="onUnitChange(this.value)">
+                                  <option value="mm" selected>mm</option>
+                                  <option value="inch">inch</option>
+                                  <option value="cm">cm</option>
+                                  <option value="ft">ft</option>
+                              </select>
+                          </div>
+                      </div>
+                      <div class="row g-2 mb-3">
+                          <div class="col-4">
+                              <label class="form-label small fw-semibold text-dark mb-1" id="lbl-cfg-width">Width (mm)</label>
+                              <input type="number" step="any" id="cfg-width" class="form-control form-control-sm border-0 shadow-sm fw-bold" value="1200" oninput="updateConfigurator()" tabindex="1">
+                          </div>
+                          <div class="col-4">
+                              <label class="form-label small fw-semibold text-dark mb-1" id="lbl-cfg-height">Height (mm)</label>
+                              <input type="number" step="any" id="cfg-height" class="form-control form-control-sm border-0 shadow-sm fw-bold" value="1500" oninput="updateConfigurator()" tabindex="2">
+                          </div>
+                          <div class="col-4">
+                              <label class="form-label small fw-semibold text-dark mb-1">Qty</label>
+                              <input type="number" min="1" id="cfg-qty" class="form-control form-control-sm border-0 shadow-sm fw-bold" value="1" tabindex="3" onkeypress="handleQtyEnter(event)">
+                          </div>
+                      </div>
+                      
+                      <button type="button" class="btn btn-secondary btn-sm w-100 shadow-sm hover-lift fw-semibold mb-3" onclick="queueSize()" tabindex="4">
+                          <i class="bi bi-plus-circle me-1"></i> Add Size to Batch
+                      </button>
+
+                      <div class="card border-0 bg-white shadow-sm rounded-3">
+                          <div class="card-header bg-transparent border-bottom pt-2 pb-1">
+                              <span class="fw-bold text-muted small text-uppercase">Sizes in this batch</span>
+                          </div>
+                          <div class="card-body p-0 overflow-auto" style="max-height: 120px;">
+                              <table class="table table-sm table-hover text-center align-middle mb-0" style="font-size: 0.82rem;">
+                                  <thead class="text-muted table-light">
+                                      <tr><th>W</th><th>H</th><th>Unit</th><th>Qty</th><th>Sq.Ft.</th><th></th></tr>
+                                  </thead>
+                                  <tbody id="staged-sizes-body">
+                                      <tr><td colspan="6" class="text-muted py-2 small">No sizes queued.</td></tr>
+                                  </tbody>
+                              </table>
+                          </div>
+                      </div>
+
+                      <!-- 4. CUSTOM WORK RATE / PRICE -->
+                      <div class="mt-3 pt-2 border-top">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                              <label class="form-label small fw-semibold text-dark mb-0">Custom Work Rate (₹ / Sq.Ft.)</label>
+                              <small class="text-muted" style="font-size: 0.72rem;">Optional (auto BOM if empty)</small>
+                          </div>
+                          <div class="input-group input-group-sm shadow-sm">
+                              <span class="input-group-text bg-white border-0 text-muted fw-bold">₹</span>
+                              <input type="number" step="0.01" min="0" id="cfg-rate-sqft" class="form-control border-0 fw-bold text-primary" placeholder="Auto system rate">
+                              <span class="input-group-text bg-white border-0 text-muted small">/ sq.ft</span>
+                          </div>
+                      </div>
+
+                  </div>
+                  
+                  <div class="p-3 border-top bg-white mt-auto">
+                      <button type="button" class="btn btn-primary btn-sm w-100 rounded-pill shadow-sm hover-lift fw-bold py-2" onclick="addToCart()" tabindex="5" id="btn-add-to-quote">
+                          Add to Quote <i class="bi bi-cart-plus ms-1"></i>
+                      </button>
+                  </div>
+              </div>
+          </div>
       </div>
     </div>
   </div>
 </div>
 
+<style>
+/* Premium Typography & Spacing */
+body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
+.hover-lift { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease; }
+.hover-lift:hover { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,.06)!important; }
+.cursor-pointer { cursor: pointer; }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #94a3b8; }
+
+/* Active States */
+.card.active-card { border: 2px solid #3b82f6 !important; background-color: #eff6ff; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(59,130,246,.12)!important; }
+.active-card .prod-icon-bg { background-color: #3b82f6 !important; }
+.active-card .prod-icon { color: white !important; }
+
+/* Modals & Shadow */
+.shadow-inner { box-shadow: inset 0 2px 10px rgba(0,0,0,0.03); border-radius: 12px; }
+.modal-content { border-radius: 20px !important; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+
+/* Buttons & Inputs */
+.btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; box-shadow: 0 4px 10px rgba(37,99,235,0.2); }
+.btn-primary:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); box-shadow: 0 6px 15px rgba(37,99,235,0.3); }
+.form-control, .form-select { border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; padding: 0.5rem 0.75rem; transition: border-color 0.2s, box-shadow 0.2s; }
+.form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+
+/* Cart Item Styling */
+.cart-item { border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; padding: 12px 15px; border-radius: 8px; margin-bottom: 4px; }
+.cart-item:hover { background-color: #f8fafc; }
+.cart-item-actions { opacity: 0; transition: opacity 0.2s; }
+.cart-item:hover .cart-item-actions { opacity: 1; }
+
+.z-index-1 { z-index: 1; }
+#svg-container { max-height: 420px; overflow: hidden; }
+#svg-container svg { max-width: 100%; max-height: 380px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto; }
+</style>
+
+<script src="{{ asset('js/visual-configurator.js') }}"></script>
 <script>
-    let itemIndex = 0;
-    const products = @json($products);
+    // State
+    const productsMap = @json($products->keyBy('id'));
+    const customersMap = @json($customers->keyBy('id'));
+    let selectedProductId = null;
+    let selectedProductName = null;
+    let selectedDesign = null;
+    let cart = [];
+    let stagedSizes = [];
+    let configurator = null;
+    let previewDebounceTimer = null;
+    let configModalInstance = null;
+    let editingCartIdx = null;
 
-    function addSizeRow(btn, iIndex) {
-        const tbody = btn.closest('.item-group');
-        const sizesContainer = tbody.querySelector('.sizes-container');
-        const sizeIndex = tbody.querySelectorAll('.size-row').length;
+    document.addEventListener("DOMContentLoaded", () => {
+        configurator = new window.VisualConfigurator('#svg-container');
+        configModalInstance = new bootstrap.Modal(document.getElementById('configModal'));
+    });
 
-        const div = document.createElement('div');
-        div.className = 'd-flex align-items-center mb-1 size-row';
-        div.innerHTML = `
-            <input type="number" step="any" name="items[${iIndex}][sizes][${sizeIndex}][width]" class="form-control form-control-sm calc-trigger" placeholder="W (mm)" required style="width: 85px;">
-            <span class="mx-1">x</span>
-            <input type="number" step="any" name="items[${iIndex}][sizes][${sizeIndex}][height]" class="form-control form-control-sm calc-trigger" placeholder="H (mm)" required style="width: 85px;">
-            <select name="items[${iIndex}][sizes][${sizeIndex}][unit]" class="form-select form-select-sm ms-1 calc-trigger" style="width: 70px;">
-                <option value="mm">mm</option>
-                <option value="cm">cm</option>
-                <option value="inch">in</option>
-                <option value="ft">ft</option>
-            </select>
-            <span class="mx-2">Qty:</span>
-            <input type="number" step="any" name="items[${iIndex}][sizes][${sizeIndex}][quantity]" class="form-control form-control-sm calc-trigger" value="1" required style="width: 65px;">
-            <input type="hidden" name="items[${iIndex}][sizes][${sizeIndex}][area]" class="size-area">
-            <span class="ms-2 fw-bold text-primary size-area-display" style="width: 80px;">0.00 Sq.Ft.</span>
-            <span class="ms-2 fw-bold text-success size-amount" style="width: 90px;">₹0.00</span>
-            <button type="button" class="btn btn-sm text-danger ms-1" onclick="this.closest('.size-row').remove(); calculateTotals();"><i class="bi bi-trash"></i></button>
-        `;
-        sizesContainer.appendChild(div);
-        div.querySelectorAll('.calc-trigger').forEach(el => el.addEventListener('input', calculateTotals));
-        calculateTotals();
-    }
-
-    function addItemRow() {
-        let options = '<option value="">Select Template...</option>';
-        products.forEach(p => {
-            options += `<option value="${p.id}" data-rate="${p.base_rate}">${p.name} - ${p.category}</option>`;
-        });
-
-        const codeVal = 'W' + (itemIndex + 1);
-
-        const tbody = document.createElement('tbody');
-        tbody.className = 'item-group border-bottom border-2';
-        tbody.innerHTML = `
-            <tr class="main-item-row bg-white">
-                <td>
-                    <input type="text" name="items[${itemIndex}][item_code]" class="form-control form-control-sm font-bold text-primary mb-1" value="${codeVal}" placeholder="Code e.g. W1">
-                    <button type="button" class="btn btn-sm btn-outline-primary w-100" onclick="openAdvancedSpecs(${itemIndex}, '${codeVal}')"><i class="bi bi-sliders"></i> Item Details & Specs</button>
-                    <!-- Hidden general fields -->
-                    <input type="hidden" name="items[${itemIndex}][position]" class="hidden-general" data-key="position" value="${codeVal}">
-                    <input type="hidden" name="items[${itemIndex}][location]" class="hidden-general" data-key="location" value="">
-                    <input type="hidden" name="items[${itemIndex}][profile_color]" class="hidden-general" data-key="profile_color" value="WHITE">
-                    <input type="hidden" name="items[${itemIndex}][mesh_type]" class="hidden-general" data-key="mesh_type" value="No">
-                    <input type="hidden" name="items[${itemIndex}][glass_type]" class="hidden-general" data-key="glass_type" value="(1) 5mm Clear Toughened">
-                    <input type="hidden" name="items[${itemIndex}][hardware_brand]" class="hidden-general" data-key="hardware_brand" value="CORA Hardware">
-                    <input type="hidden" name="items[${itemIndex}][notes]" class="hidden-general" data-key="notes" value="">
-                </td>
-                <td>
-                    <select name="items[${itemIndex}][product_id]" class="form-select form-select-sm product-select fw-bold mb-1" required>
-                        ${options}
-                    </select>
-                    <input type="text" name="items[${itemIndex}][profile_system]" class="form-control form-control-sm item-profile-system" value="CORA - 60MM CASEMENT SERIES" placeholder="Profile System">
-                </td>
-                <td class="bg-light">
-                    <div class="sizes-container"></div>
-                    <button type="button" class="btn btn-sm btn-link p-0 mt-1" onclick="addSizeRow(this, ${itemIndex})">+ Add Dimension Size</button>
-                </td>
-                <td><input type="number" step="any" name="items[${itemIndex}][rate]" class="form-control form-control-sm calc-trigger item-rate" value="600" required></td>
-                <td><input type="number" name="items[${itemIndex}][amount]" class="form-control form-control-sm item-amount fw-bold" value="0" readonly></td>
-                <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tbody').remove(); calculateTotals();"><i class="bi bi-x"></i></button></td>
-            </tr>
-            <tr class="d-none">
-                <td colspan="6">
-                    <div id="hiddenSpecs_${itemIndex}" class="d-none">
-                        <!-- Profile Defaults -->
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Profile Color]" value="WHITE" class="spec-hidden" data-group="profile" data-key="Profile Color">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][MeshType]" value="No" class="spec-hidden" data-group="profile" data-key="MeshType">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Casement Sash]" value="" class="spec-hidden" data-group="profile" data-key="Casement Sash">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Casement Sash Ri]" value="" class="spec-hidden" data-group="profile" data-key="Casement Sash Ri">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Outer]" value="" class="spec-hidden" data-group="profile" data-key="Outer">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Outer Ri]" value="" class="spec-hidden" data-group="profile" data-key="Outer Ri">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Door Panel]" value="" class="spec-hidden" data-group="profile" data-key="Door Panel">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Sash Mullion]" value="" class="spec-hidden" data-group="profile" data-key="Sash Mullion">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Mullion Ri]" value="" class="spec-hidden" data-group="profile" data-key="Mullion Ri">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Coupler]" value="" class="spec-hidden" data-group="profile" data-key="Coupler">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Flymesh Sash]" value="" class="spec-hidden" data-group="profile" data-key="Flymesh Sash">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Flymesh Sash Ri]" value="" class="spec-hidden" data-group="profile" data-key="Flymesh Sash Ri">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Guide Rail]" value="" class="spec-hidden" data-group="profile" data-key="Guide Rail">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Interlock]" value="" class="spec-hidden" data-group="profile" data-key="Interlock">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Sliding Sash]" value="" class="spec-hidden" data-group="profile" data-key="Sliding Sash">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Sliding Sash Ri]" value="" class="spec-hidden" data-group="profile" data-key="Sliding Sash Ri">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Track]" value="" class="spec-hidden" data-group="profile" data-key="Track">
-                        <input type="hidden" name="items[${itemIndex}][profile_details][Track Ri]" value="" class="spec-hidden" data-group="profile" data-key="Track Ri">
-                        
-                        <!-- Accessories Defaults -->
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Locking]" value="" class="spec-hidden" data-group="accessories" data-key="Locking">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Handle color]" value="WHITE" class="spec-hidden" data-group="accessories" data-key="Handle color">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Arm Restrictor]" value="" class="spec-hidden" data-group="accessories" data-key="Arm Restrictor">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Cylinder]" value="" class="spec-hidden" data-group="accessories" data-key="Cylinder">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Handle Type 1]" value="" class="spec-hidden" data-group="accessories" data-key="Handle Type 1">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Handle Type 2]" value="" class="spec-hidden" data-group="accessories" data-key="Handle Type 2">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Hinge 1]" value="" class="spec-hidden" data-group="accessories" data-key="Hinge 1">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Hinge 2]" value="" class="spec-hidden" data-group="accessories" data-key="Hinge 2">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Friction]" value="" class="spec-hidden" data-group="accessories" data-key="Friction">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Roller]" value="" class="spec-hidden" data-group="accessories" data-key="Roller">
-                        <input type="hidden" name="items[${itemIndex}][accessories_details][Flymesh Handle Type]" value="" class="spec-hidden" data-group="accessories" data-key="Flymesh Handle Type">
-                    </div>
-                </td>
-            </tr>
-        `;
-        document.getElementById('itemsTable').appendChild(tbody);
-
-        tbody.querySelector('.product-select').addEventListener('change', function() {
-            const opt = this.options[this.selectedIndex];
-            const pId = this.value;
-            const product = products.find(p => p.id == pId);
-            if(product) {
-                tbody.querySelector('.item-rate').value = product.base_rate || 600;
-                if(product.profile_series) tbody.querySelector('.item-profile-system').value = 'CORA - ' + product.profile_series;
-                
-                // General Fields Mapping
-                if(product.glass_type) tbody.querySelector('.hidden-general[data-key="glass_type"]').value = product.glass_type;
-                if(product.hardware_brand) tbody.querySelector('.hidden-general[data-key="hardware_brand"]').value = product.hardware_brand;
-                if(product.mesh_type) tbody.querySelector('.hidden-general[data-key="mesh_type"]').value = product.mesh_type;
-                
-                // Exhaustive Profile Details Mapping
-                if (product.profile_details) {
-                    for (const [k, v] of Object.entries(product.profile_details)) {
-                        const input = tbody.querySelector(`.spec-hidden[data-group="profile"][data-key="${k}"]`);
-                        if (input) input.value = v || '';
-                    }
-                }
-                
-                // Exhaustive Accessories Details Mapping
-                if (product.accessories_details) {
-                    for (const [k, v] of Object.entries(product.accessories_details)) {
-                        const input = tbody.querySelector(`.spec-hidden[data-group="accessories"][data-key="${k}"]`);
-                        if (input) input.value = v || '';
-                    }
-                }
+    function onCustomerSelect(el) {
+        const custId = el.value;
+        if (custId && customersMap[custId]) {
+            const c = customersMap[custId];
+            const clientNameInput = document.getElementById('client_name');
+            const projNameInput = document.getElementById('project_name');
+            if (!clientNameInput.value) {
+                clientNameInput.value = c.name + (c.company_name ? ' (' + c.company_name + ')' : '');
             }
-            calculateTotals();
-        });
-
-        tbody.querySelectorAll('.calc-trigger').forEach(el => el.addEventListener('input', calculateTotals));
-        addSizeRow(tbody.querySelector('.btn-link'), itemIndex);
-        itemIndex++;
+            if (!projNameInput.value) {
+                projNameInput.value = c.name + ' Project';
+            }
+        }
     }
 
-    function calculateTotals() {
-        const formData = new FormData(document.getElementById('quotationForm'));
-        
-        fetch("{{ route('quotations.calculate') }}", {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.items) {
-                const tbodys = document.querySelectorAll('#itemsTable tbody.item-group');
-                data.items.forEach((item, idx) => {
-                    if (tbodys[idx]) {
-                        const amountInput = tbodys[idx].querySelector('.item-amount');
-                        if (amountInput) amountInput.value = item.amount.toFixed(2);
+    // ----- UI FLOW -----
+    function toggleSetup() {
+        const body = document.getElementById('setup-body');
+        const chev = document.getElementById('setup-chevron');
+        if(body.classList.contains('d-none')) {
+            body.classList.remove('d-none');
+            chev.classList.remove('bi-chevron-down');
+            chev.classList.add('bi-chevron-up');
+        } else {
+            body.classList.add('d-none');
+            chev.classList.remove('bi-chevron-up');
+            chev.classList.add('bi-chevron-down');
+        }
+    }
 
-                        if(item.sizes) {
-                            const sizeRows = tbodys[idx].querySelectorAll('.size-row');
-                            item.sizes.forEach((s, sIdx) => {
-                                if(sizeRows[sIdx]) {
-                                    sizeRows[sIdx].querySelector('.size-area').value = s.area;
-                                    const areaDisplay = sizeRows[sIdx].querySelector('.size-area-display');
-                                    if(areaDisplay) areaDisplay.innerText = s.area.toFixed(2) + ' Sq.Ft.';
-                                    sizeRows[sIdx].querySelector('.size-amount').innerText = '₹' + s.amount.toFixed(2);
-                                }
-                            });
-                        }
+    function onCustomerSelect(selectElem) {
+        if (!selectElem.value) return;
+        const opt = selectElem.options[selectElem.selectedIndex];
+        const clientNameInput = document.getElementById('client_name');
+        if (clientNameInput && (!clientNameInput.value || clientNameInput.value.trim() === '')) {
+            clientNameInput.value = opt.text.split('(')[0].trim();
+        }
+        const projInput = document.getElementById('project_name');
+        if (projInput && (!projInput.value || projInput.value.trim() === '')) {
+            projInput.value = opt.text.split('(')[0].trim() + ' Project';
+        }
+        const locInput = document.getElementById('project_location');
+        if (locInput && (!locInput.value || locInput.value.trim() === '') && opt.dataset.address) {
+            locInput.value = opt.dataset.address;
+        }
+        const contactInfo = document.getElementById('customer-contact-info');
+        if (contactInfo) {
+            const phone = opt.dataset.phone || 'No Phone';
+            const email = opt.dataset.email || 'No Email';
+            contactInfo.innerHTML = `<span class="badge bg-light text-dark border me-1"><i class="bi bi-telephone me-1"></i>${phone}</span> <span class="badge bg-light text-dark border"><i class="bi bi-envelope me-1"></i>${email}</span>`;
+        }
+    }
+
+    function startStudio() {
+        const cust = document.getElementById('customer_id');
+        if(!cust.value) return alert("Select a customer");
+        
+        // Update summary text
+        const custName = cust.options[cust.selectedIndex].text;
+        const proj = document.getElementById('project_name').value;
+        document.getElementById('setup-summary').innerText = `${custName} | ${proj}`;
+        document.getElementById('setup-summary').classList.remove('d-none');
+        
+        toggleSetup();
+        document.getElementById('studio-panel').classList.remove('d-none');
+    }
+
+    // ----- PRODUCT & DESIGN MODAL -----
+    function openConfigModal(id, name, isEdit = false) {
+        selectedProductId = id;
+        selectedProductName = name;
+        document.getElementById('modal-product-name').innerText = name;
+        
+        // Reset state if not editing
+        if(!isEdit) {
+            selectedDesign = null;
+            document.getElementById('svg-container').innerHTML = '<div class="text-muted small"><i class="bi bi-hourglass-split"></i> Loading...</div>';
+            stagedSizes = [];
+            editingCartIdx = null;
+
+            // Reset unit to mm
+            const unitSelect = document.getElementById('cfg-unit');
+            if (unitSelect) {
+                unitSelect.value = 'mm';
+                document.getElementById('lbl-cfg-width').innerText = 'Width (mm)';
+                document.getElementById('lbl-cfg-height').innerText = 'Height (mm)';
+                document.getElementById('cfg-width').value = 1200;
+                document.getElementById('cfg-height').value = 1500;
+                document.getElementById('cfg-width').dataset.prevUnit = 'mm';
+            }
+            
+            const prod = productsMap[id] || {};
+            // Reset Spec dropdowns to product defaults if available
+            document.getElementById('cfg-glass').value = prod.glass_type ? (Array.from(document.getElementById('cfg-glass').options).some(o => o.value === prod.glass_type) ? prod.glass_type : "") : "";
+            document.getElementById('cfg-mesh').value = (prod.mesh_type && prod.mesh_type !== 'No') ? (Array.from(document.getElementById('cfg-mesh').options).some(o => o.value === prod.mesh_type) ? prod.mesh_type : "") : "";
+            document.getElementById('cfg-profile-color').value = "";
+            document.getElementById('cfg-hardware-color').value = "";
+            if (document.getElementById('cfg-rate-sqft')) document.getElementById('cfg-rate-sqft').value = "";
+            
+            renderStagedSizes();
+        }
+        
+        configModalInstance.show();
+        loadDesigns(id, isEdit);
+    }
+
+    function loadDesigns(productId, isEdit) {
+        const list = document.getElementById('design-list');
+        list.innerHTML = `<div class="p-2 text-muted small"><span class="spinner-border spinner-border-sm"></span> Loading...</div>`;
+
+        fetch(`/products/${productId}/designs`)
+            .then(res => res.json())
+            .then(designs => {
+                if(!designs.length) {
+                    list.innerHTML = `<div class="p-2 text-muted small">No designs available.</div>`;
+                    return;
+                }
+                
+                let html = '';
+                designs.forEach(d => {
+                    const cleanName = d.name.replace(/'/g, "\\'");
+                    let imgUrl = '';
+                    // Prioritize vector SVG preview: instant in-memory rendering, zero network lag, 100% crisp
+                    if (d.svg_template) {
+                        const rawTemplate = d.svg_template
+                            .replace(/\{\{VB_X\}\}/g, '-60')
+                            .replace(/\{\{VB_Y\}\}/g, '-60')
+                            .replace(/\{\{VB_WIDTH\}\}/g, '1120')
+                            .replace(/\{\{VB_HEIGHT\}\}/g, '1120')
+                            .replace(/\{\{WIDTH\}\}/g, '1000')
+                            .replace(/\{\{HEIGHT\}\}/g, '1000')
+                            .replace(/\{\{INNER_WIDTH\}\}/g, '920')
+                            .replace(/\{\{INNER_HEIGHT\}\}/g, '920')
+                            .replace(/\{\{CENTER_X\}\}/g, '500')
+                            .replace(/\{\{CENTER_Y\}\}/g, '500')
+                            .replace(/\{\{PANEL_WIDTH\}\}/g, '470')
+                            .replace(/\{\{PANEL_2_X\}\}/g, '490')
+                            .replace(/\{\{SLIDE_ARROW_END\}\}/g, '350');
+                        imgUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(rawTemplate);
+                    } else if (d.preview_image) {
+                        imgUrl = `/${d.preview_image}`;
                     }
+                    html += `
+                    <div class="card border border-2 shadow-sm cursor-pointer hover-lift design-card flex-shrink-0" 
+                         id="design-card-${d.id}" 
+                         style="width: 100px; transition: all 0.2s ease;"
+                         onclick="selectDesign(${d.id}, '${cleanName}')">
+                        <img src="${imgUrl}" class="card-img-top" style="height: 80px; object-fit: contain; padding: 4px;" alt="${d.name}" loading="lazy" decoding="async">
+                        <div class="card-body p-1 text-center bg-white rounded-bottom border-top">
+                            <small class="fw-bold d-block text-truncate text-dark" style="font-size: 0.65rem;" title="${d.name}">${d.name}</small>
+                        </div>
+                    </div>`;
                 });
-            }
+                list.innerHTML = html;
+                window.loadedDesigns = designs; // Cache
+                
+                // Select design
+                if(!isEdit && designs.length > 0) {
+                    selectDesign(designs[0].id, designs[0].name.replace(/'/g, "\\'"));
+                }
+            });
+    }
 
-            document.getElementById('txt_components').innerText = (data.no_of_components || 0) + ' Pcs';
-            document.getElementById('txt_total_area').innerText = (data.total_area_sqft || 0).toFixed(2) + ' Sq.Ft.';
-            document.getElementById('txt_subtotal').innerText = '₹' + data.subtotal.toFixed(2);
-            document.getElementById('lbl_gst').innerText = 'GST (' + data.gst_percent + '%):';
-            document.getElementById('txt_gst').innerText = '₹' + data.gst.toFixed(2);
-            document.getElementById('txt_grand_total').innerText = '₹' + data.grand_total.toFixed(2);
-            document.getElementById('txt_avg_ex').innerText = '₹' + (data.avg_price_sqft_ex_gst || 0).toFixed(2);
-            document.getElementById('txt_avg_inc').innerText = '₹' + (data.avg_price_sqft_inc_gst || 0).toFixed(2);
+    function selectDesign(id, name) {
+        const design = window.loadedDesigns.find(d => d.id === id);
+        if(!design) return;
+        
+        selectedDesign = design;
+        
+        // Update UI
+        document.querySelectorAll('.design-card').forEach(el => {
+            el.classList.remove('border-primary', 'bg-light-primary');
+            el.classList.add('border');
         });
+        const activeCard = document.getElementById(`design-card-${id}`);
+        if(activeCard) {
+            activeCard.classList.add('border-primary', 'bg-light-primary');
+            activeCard.classList.remove('border');
+        }
+        
+        // Render SVG
+        configurator.setTemplate(design.svg_template || '<svg></svg>');
+        updateConfigurator();
+        
+        // Focus width
+        document.getElementById('cfg-width').focus();
     }
 
-    function openAdvancedSpecs(index, codeVal) {
-        document.getElementById('specsItemCode').innerText = codeVal;
-        document.getElementById('specsActiveRowIndex').value = index;
+    // ----- CONFIGURATOR & UNIT HANDLING -----
+    function onUnitChange(newUnit) {
+        document.getElementById('lbl-cfg-width').innerText = `Width (${newUnit})`;
+        document.getElementById('lbl-cfg-height').innerText = `Height (${newUnit})`;
+
+        const wInput = document.getElementById('cfg-width');
+        const hInput = document.getElementById('cfg-height');
+        const curW = parseFloat(wInput.value);
+        const curH = parseFloat(hInput.value);
+
+        if (curW && curH) {
+            const prevUnit = wInput.dataset.prevUnit || 'mm';
+            if (prevUnit !== newUnit) {
+                const toMm = { 'mm': 1, 'cm': 10, 'inch': 25.4, 'in': 25.4, 'ft': 304.8, 'm': 1000 };
+                const wMm = curW * (toMm[prevUnit] || 1);
+                const hMm = curH * (toMm[prevUnit] || 1);
+                const fromMm = toMm[newUnit] || 1;
+                wInput.value = parseFloat((wMm / fromMm).toFixed(2));
+                hInput.value = parseFloat((hMm / fromMm).toFixed(2));
+            }
+        }
+        wInput.dataset.prevUnit = newUnit;
+        updateConfigurator();
+    }
+
+    function updateConfigurator() {
+        const w = document.getElementById('cfg-width').value;
+        const h = document.getElementById('cfg-height').value;
+        const u = document.getElementById('cfg-unit') ? document.getElementById('cfg-unit').value : 'mm';
+        if(w && h && configurator) {
+            configurator.setDimensions(w, h, u);
+        }
+    }
+
+    function handleQtyEnter(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            queueSize();
+            document.getElementById('cfg-width').focus();
+        }
+    }
+
+    function queueSize() {
+        const w = parseFloat(document.getElementById('cfg-width').value);
+        const h = parseFloat(document.getElementById('cfg-height').value);
+        const u = document.getElementById('cfg-unit') ? document.getElementById('cfg-unit').value : 'mm';
+        const qty = parseInt(document.getElementById('cfg-qty').value);
         
-        // Load data from hidden fields into modal
-        const hiddenDiv = document.getElementById('hiddenSpecs_' + index);
-        if(hiddenDiv) {
-            hiddenDiv.querySelectorAll('.spec-hidden').forEach(hiddenInput => {
-                const group = hiddenInput.getAttribute('data-group');
-                const key = hiddenInput.getAttribute('data-key');
-                const modalInput = document.querySelector(`.spec-input[data-group="${group}"][data-key="${key}"]`);
-                if(modalInput) {
-                    modalInput.value = hiddenInput.value;
-                }
-            });
+        if (!w || !h || !qty) return alert("Enter valid dimensions and quantity.");
+
+        // Calculate approximate Sq.Ft. for instant UI feedback
+        let areaSqFt = 0;
+        if (u === 'inch') {
+            areaSqFt = (w * h) / 144.0;
+        } else if (u === 'ft') {
+            areaSqFt = w * h;
+        } else if (u === 'cm') {
+            areaSqFt = (w * h) / 929.0304;
+        } else {
+            areaSqFt = (w * h) / 92903.04;
+        }
+        
+        stagedSizes.push({ width: w, height: h, unit: u, qty: qty, areaSqFt: parseFloat(areaSqFt.toFixed(3)), id: Date.now() });
+        renderStagedSizes();
+        
+        document.getElementById('cfg-qty').value = 1;
+    }
+
+    function removeStagedSize(id) {
+        stagedSizes = stagedSizes.filter(s => s.id !== id);
+        renderStagedSizes();
+    }
+
+    function renderStagedSizes() {
+        const tbody = document.getElementById('staged-sizes-body');
+        if (stagedSizes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted py-2 small">No sizes queued.</td></tr>';
+            return;
+        }
+        let html = '';
+        stagedSizes.forEach(s => {
+            const unit = s.unit || 'mm';
+            html += `<tr>
+                <td class="fw-semibold text-dark">${s.width}</td>
+                <td class="fw-semibold text-dark">${s.height}</td>
+                <td><span class="badge bg-light text-primary border">${unit}</span></td>
+                <td class="fw-semibold text-dark">${s.qty}</td>
+                <td class="small text-muted">${s.areaSqFt ? (s.areaSqFt * s.qty).toFixed(2) : '-'}</td>
+                <td><button type="button" class="btn btn-sm text-danger py-0 px-1" onclick="removeStagedSize(${s.id})"><i class="bi bi-x"></i></button></td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    }
+
+    // ----- CART -----
+    function addToCart() {
+        if (!selectedDesign) return alert("Please wait for design to load.");
+
+        // If nothing queued, auto-queue the current inputs
+        if (stagedSizes.length === 0) {
+            const w = parseFloat(document.getElementById('cfg-width').value);
+            const h = parseFloat(document.getElementById('cfg-height').value);
+            const u = document.getElementById('cfg-unit') ? document.getElementById('cfg-unit').value : 'mm';
+            const qty = parseInt(document.getElementById('cfg-qty').value);
+            if (w && h && qty) {
+                let areaSqFt = (u === 'inch') ? (w * h) / 144.0 : ((u === 'ft') ? (w * h) : ((u === 'cm') ? (w * h) / 929.0304 : (w * h) / 92903.04));
+                stagedSizes.push({ width: w, height: h, unit: u, qty: qty, areaSqFt: parseFloat(areaSqFt.toFixed(3)), id: Date.now() });
+            } else {
+                return alert("Queue at least one size.");
+            }
+        }
+        
+        const rawSvg = document.getElementById('svg-container').innerHTML;
+        const itemSizes = stagedSizes.map(s => ({
+            width: s.width,
+            height: s.height,
+            quantity: s.qty,
+            unit: s.unit || 'mm'
+        }));
+        
+        const totalQty = stagedSizes.reduce((acc, s) => acc + s.qty, 0);
+        const primaryUnit = itemSizes[0]?.unit || 'mm';
+
+        const prod = productsMap[selectedProductId] || {};
+        const cartItem = {
+            id: (editingCartIdx !== null && cart[editingCartIdx].id) ? cart[editingCartIdx].id : Date.now(),
+            product_id: selectedProductId,
+            product_name: selectedProductName,
+            profile_brand: prod.profile_brand || '',
+            profile_series: prod.profile_series || '',
+            profile_system: prod.profile_series || prod.category || 'Casement Series',
+            design_id: selectedDesign.id,
+            design_name: selectedDesign.name,
+            sizes: itemSizes,
+            unit: primaryUnit,
+            total_qty: totalQty,
+            svg: rawSvg,
+            // Specifications
+            glass_type: document.getElementById('cfg-glass').value || prod.glass_type || '',
+            glass_thickness: prod.glass_thickness || '',
+            mesh_type: document.getElementById('cfg-mesh').value || prod.mesh_type || 'No',
+            profile_color: document.getElementById('cfg-profile-color').value || 'Standard White',
+            hardware_color: document.getElementById('cfg-hardware-color').value || 'White',
+            hardware_brand: prod.hardware_brand || '',
+            profile_details: prod.profile_details || {},
+            accessories_details: prod.accessories_details || [],
+            rate_per_sqft: (document.getElementById('cfg-rate-sqft') && document.getElementById('cfg-rate-sqft').value) ? parseFloat(document.getElementById('cfg-rate-sqft').value) : null
+        };
+
+        if (editingCartIdx !== null) {
+            cart[editingCartIdx] = cartItem; // Replace edited item
+        } else {
+            cart.push(cartItem); // Add new item
+        }
+        
+        // Clean up and close modal
+        stagedSizes = [];
+        renderStagedSizes();
+        renderCartUI();
+        configModalInstance.hide();
+    }
+
+    function duplicateCartItem(idx) {
+        const item = cart[idx];
+        const copy = JSON.parse(JSON.stringify(item));
+        copy.id = Date.now();
+        cart.splice(idx + 1, 0, copy);
+        renderCartUI();
+    }
+
+    function removeCartItem(idx) {
+        if(confirm("Remove this item?")) {
+            cart.splice(idx, 1);
+            renderCartUI();
+        }
+    }
+
+    function editCartItem(idx) {
+        const item = cart[idx];
+        editingCartIdx = idx;
+        
+        // Open Modal
+        openConfigModal(item.product_id, item.product_name, true);
+        
+        // Restore unit
+        const itemUnit = item.unit || (item.sizes && item.sizes[0] ? item.sizes[0].unit : 'mm');
+        const unitSelect = document.getElementById('cfg-unit');
+        if (unitSelect) {
+            unitSelect.value = itemUnit;
+            onUnitChange(itemUnit);
         }
 
-        // Load general details
-        const tbody = document.querySelector(`input[name="items[${index}][item_code]"]`).closest('tbody');
-        tbody.querySelectorAll('.hidden-general').forEach(hiddenInput => {
-            const key = hiddenInput.getAttribute('data-key');
-            const modalInput = document.querySelector(`.spec-input-general[data-key="${key}"]`);
-            if(modalInput) {
-                modalInput.value = hiddenInput.value;
+        // Populate Specs
+        document.getElementById('cfg-glass').value = item.glass_type || '';
+        document.getElementById('cfg-mesh').value = item.mesh_type || '';
+        document.getElementById('cfg-profile-color').value = item.profile_color || '';
+        document.getElementById('cfg-hardware-color').value = item.hardware_color || '';
+        if (document.getElementById('cfg-rate-sqft')) {
+            document.getElementById('cfg-rate-sqft').value = item.rate_per_sqft || item.value_per_sqft || '';
+        }
+
+        // Wait for designs to load, then select the design
+        let attempts = 0;
+        const checkDesign = setInterval(() => {
+            if (window.loadedDesigns && window.loadedDesigns.length > 0) {
+                clearInterval(checkDesign);
+                selectDesign(item.design_id, item.design_name);
+                
+                // Load sizes with unit and areaSqFt
+                stagedSizes = item.sizes.map(s => {
+                    const u = s.unit || itemUnit || 'mm';
+                    let areaSqFt = 0;
+                    if (u === 'inch') areaSqFt = (s.width * s.height) / 144.0;
+                    else if (u === 'ft') areaSqFt = s.width * s.height;
+                    else if (u === 'cm') areaSqFt = (s.width * s.height) / 929.0304;
+                    else areaSqFt = (s.width * s.height) / 92903.04;
+                    return {
+                        width: s.width,
+                        height: s.height,
+                        unit: u,
+                        qty: s.quantity || s.qty || 1,
+                        areaSqFt: parseFloat(areaSqFt.toFixed(3)),
+                        id: Date.now() + Math.random()
+                    };
+                });
+                renderStagedSizes();
+                
+                // Update the configurator with the first size
+                if (stagedSizes.length > 0) {
+                    document.getElementById('cfg-width').value = stagedSizes[0].width;
+                    document.getElementById('cfg-height').value = stagedSizes[0].height;
+                    updateConfigurator();
+                }
             }
+            attempts++;
+            if(attempts > 20) clearInterval(checkDesign); // timeout after 2s
+        }, 100);
+    }
+
+    function renderCartUI() {
+        const container = document.getElementById('cart-items-container');
+        if (cart.length === 0) {
+            container.innerHTML = `
+            <div class="text-center text-muted p-5 mt-5">
+                <i class="bi bi-cart-x fs-1 opacity-50 mb-3 d-block"></i>
+                <p class="mb-0 small">Quote is empty.</p>
+            </div>`;
+            document.getElementById('cart-total').innerText = '₹ 0.00';
+            return;
+        }
+        
+        let html = '';
+        cart.forEach((item, idx) => {
+            let sizesList = item.sizes.map(s => `<span class="badge bg-light text-dark border me-1 mb-1">${s.width}x${s.height} ${s.unit || 'mm'} [Qty ${s.quantity}]</span>`).join('');
+            
+            // Build Specs String
+            let specs = [];
+            if(item.profile_brand) specs.push(item.profile_brand);
+            if(item.profile_series) specs.push(item.profile_series);
+            if(item.glass_type) specs.push(item.glass_type);
+            if(item.mesh_type && item.mesh_type !== 'No') specs.push(item.mesh_type);
+            if(item.profile_color) specs.push(item.profile_color);
+            if(item.rate_per_sqft) specs.push(`Custom Rate: ₹${item.rate_per_sqft}/sqft`);
+            let specsHtml = specs.length > 0 ? `<div class="small text-muted mb-2"><i class="bi bi-gear-fill me-1"></i> ${specs.join(' | ')}</div>` : '';
+
+            html += `
+            <div class="cart-item position-relative">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">Item ${idx+1}: ${item.product_name}</h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">${item.design_name}</small>
+                    </div>
+                    <div class="cart-item-actions bg-white shadow-sm rounded-pill px-1 py-0 border position-absolute top-0 end-0 mt-2 me-2">
+                        <button class="btn btn-sm text-primary py-0 px-1" onclick="editCartItem(${idx})" title="Edit"><i class="bi bi-pencil" style="font-size: 0.75rem;"></i></button>
+                        <button class="btn btn-sm text-secondary py-0 px-1" onclick="duplicateCartItem(${idx})" title="Duplicate"><i class="bi bi-files" style="font-size: 0.75rem;"></i></button>
+                        <button class="btn btn-sm text-danger py-0 px-1" onclick="removeCartItem(${idx})" title="Remove"><i class="bi bi-trash" style="font-size: 0.75rem;"></i></button>
+                    </div>
+                </div>
+                ${specsHtml}
+                <div class="mb-2">${sizesList}</div>
+                <div class="d-flex justify-content-between align-items-center bg-white rounded p-2 border shadow-sm mt-2">
+                    <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Qty: ${item.total_qty}</small>
+                    <span class="fw-bold font-monospace text-primary small" id="cart-item-total-${idx}">Calculating...</span>
+                </div>
+            </div>`;
         });
         
-        var specsModal = new bootstrap.Modal(document.getElementById('advancedSpecsModal'));
-        specsModal.show();
+        container.innerHTML = html;
+        debouncedPreviewRequest();
     }
 
-    function saveAdvancedSpecs() {
-        const index = document.getElementById('specsActiveRowIndex').value;
-        const hiddenDiv = document.getElementById('hiddenSpecs_' + index);
-        const tbody = document.querySelector(`input[name="items[${index}][item_code]"]`).closest('tbody');
-        
-        if(hiddenDiv) {
-            // Save data from modal into hidden fields
-            document.querySelectorAll('.spec-input').forEach(modalInput => {
-                const group = modalInput.getAttribute('data-group');
-                const key = modalInput.getAttribute('data-key');
-                const hiddenInput = hiddenDiv.querySelector(`.spec-hidden[data-group="${group}"][data-key="${key}"]`);
-                if(hiddenInput) {
-                    hiddenInput.value = modalInput.value;
-                }
-            });
-            
-            // Sync Profile Color & Mesh Type back to general fields
-            const pColor = document.querySelector(`.spec-input[data-group="profile"][data-key="Profile Color"]`).value;
-            const mType = document.querySelector(`.spec-input[data-group="profile"][data-key="MeshType"]`).value;
-            
-            const colorInput = tbody.querySelector(`.hidden-general[data-key="profile_color"]`);
-            if(colorInput) colorInput.value = pColor;
-            
-            const meshInput = tbody.querySelector(`.hidden-general[data-key="mesh_type"]`);
-            if(meshInput) meshInput.value = mType;
-        }
+    // ----- AUTHORITATIVE PREVIEW -----
+    let previewAbortController = null;
 
-        // Save general details
-        if(tbody) {
-            document.querySelectorAll('.spec-input-general').forEach(modalInput => {
-                const key = modalInput.getAttribute('data-key');
-                const hiddenInput = tbody.querySelector(`.hidden-general[data-key="${key}"]`);
-                if(hiddenInput) {
-                    hiddenInput.value = modalInput.value;
-                }
-            });
-        }
-        
-        bootstrap.Modal.getInstance(document.getElementById('advancedSpecsModal')).hide();
+    function debouncedPreviewRequest() {
+        clearTimeout(previewDebounceTimer);
+        previewDebounceTimer = setTimeout(fetchPreview, 300);
     }
 
-    document.addEventListener("DOMContentLoaded", () => addItemRow());
-
-    document.getElementById('ajaxCustomerForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const btn = document.getElementById('saveCustomerBtn');
-        const errDiv = document.getElementById('customerError');
-        btn.disabled = true;
-        btn.innerText = 'Saving...';
-        errDiv.classList.add('d-none');
-
-        const formData = new FormData(this);
+    function fetchPreview() {
+        if(cart.length === 0) return;
         
-        fetch("{{ route('customers.storeAjax') }}", {
+        if (previewAbortController) {
+            previewAbortController.abort();
+        }
+        previewAbortController = new AbortController();
+
+        const payload = {
+            project_name: document.getElementById('project_name').value || 'Draft',
+            client_name: document.getElementById('client_name').value || 'Draft',
+            date: document.getElementById('date').value,
+            quote_no: document.getElementById('quote_no').value,
+            items: cart.map((c, i) => {
+                const primaryUnit = c.unit || (c.sizes[0] ? c.sizes[0].unit : 'mm');
+                return {
+                    position: `Item ${i+1}`,
+                    product_id: c.product_id,
+                    product_name: c.product_name,
+                    design_id: c.design_id,
+                    design_name: c.design_name,
+                    qty: 1, 
+                    dimension_w: c.sizes[0].width,
+                    dimension_h: c.sizes[0].height,
+                    sizes: c.sizes,
+                    unit: primaryUnit,
+                    profile_brand: c.profile_brand,
+                    profile_series: c.profile_series,
+                    profile_system: c.profile_system,
+                    glass_type: c.glass_type,
+                    glass_thickness: c.glass_thickness,
+                    mesh_type: c.mesh_type,
+                    profile_color: c.profile_color,
+                    hardware_color: c.hardware_color,
+                    hardware_brand: c.hardware_brand,
+                    profile_details: c.profile_details,
+                    accessories_details: c.accessories_details,
+                    rate_per_sqft: c.rate_per_sqft || null
+                };
+            })
+        };
+
+        fetch('/quotations/calculate', {
             method: 'POST',
-            body: formData,
-            headers: { 
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify(payload),
+            signal: previewAbortController.signal
         })
-        .then(async (response) => {
-            if (!response.ok) {
-                const data = await response.json();
-                throw data;
-            }
-            return response.json();
+        .then(res => {
+            if(!res.ok) throw new Error("Calculation failed on server");
+            return res.json();
         })
         .then(data => {
-            if(data.success) {
-                const select = document.getElementById('customer_id');
-                const opt = new Option(`${data.customer.name} (${data.customer.company_name || ''})`, data.customer.id, true, true);
-                select.add(opt);
-                bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')).hide();
-                this.reset();
+            if (data.has_zero_cost_materials) {
+                document.getElementById('zero-cost-warning').classList.remove('d-none');
+            } else {
+                document.getElementById('zero-cost-warning').classList.add('d-none');
+            }
+
+            const subtotal = data.quotation_data ? (data.quotation_data.subtotal || 0) : 0;
+            const grandTotal = data.quotation_data ? (data.quotation_data.grand_total || 0) : 0;
+            const elSub = document.getElementById('cart-subtotal');
+            if (elSub) elSub.innerText = '₹ ' + parseFloat(subtotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('cart-total').innerText = '₹ ' + parseFloat(grandTotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            data.items.forEach((calcItem, idx) => {
+                const el = document.getElementById(`cart-item-total-${idx}`);
+                if (el) {
+                    const lineTotal = calcItem.line_total || calcItem.amount || 0;
+                    el.innerText = '₹ ' + parseFloat(lineTotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+            });
+        })
+        .catch(err => {
+            if (err.name === 'AbortError') return;
+            console.error("Preview Calculation Error:", err);
+            cart.forEach((_, idx) => {
+                const el = document.getElementById(`cart-item-total-${idx}`);
+                if (el) el.innerText = 'Error';
+            });
+            document.getElementById('cart-total').innerText = 'Error';
+        });
+    }
+
+    function saveQuotation() {
+        if(cart.length === 0) return alert("Quote is empty!");
+        
+        const cust = document.getElementById('customer_id');
+        if(!cust.value) return alert("Select a customer");
+
+        const locVal = document.getElementById('project_location') ? document.getElementById('project_location').value : '';
+        const payload = {
+            customer_id: cust.value,
+            project_name: document.getElementById('project_name').value,
+            client_name: document.getElementById('client_name').value,
+            project_location: locVal,
+            address: locVal,
+            date: document.getElementById('date').value,
+            quote_no: document.getElementById('quote_no').value,
+            status: 'Draft',
+            items: cart.map((c, i) => {
+                const primaryUnit = c.unit || (c.sizes[0] ? c.sizes[0].unit : 'mm');
+                return {
+                    position: `Item ${i+1}`,
+                    product_id: c.product_id,
+                    product_name: c.product_name,
+                    design_id: c.design_id,
+                    design_name: c.design_name,
+                    qty: c.total_qty, 
+                    dimension_w: c.sizes[0].width,
+                    dimension_h: c.sizes[0].height,
+                    sizes: c.sizes,
+                    unit: primaryUnit,
+                    profile_brand: c.profile_brand,
+                    profile_series: c.profile_series,
+                    profile_system: c.profile_system,
+                    glass_type: c.glass_type,
+                    glass_thickness: c.glass_thickness,
+                    mesh_type: c.mesh_type,
+                    profile_color: c.profile_color,
+                    hardware_color: c.hardware_color,
+                    hardware_brand: c.hardware_brand,
+                    profile_details: c.profile_details,
+                    accessories_details: c.accessories_details,
+                    rate_per_sqft: c.rate_per_sqft || null
+                };
+            })
+        };
+
+        const btn = document.getElementById('btn-save');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+        btn.disabled = true;
+
+        fetch('/quotations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => {
+            if(res.redirected) {
+                window.location.href = res.url;
+                return;
+            }
+            if(!res.ok) throw new Error("Save failed");
+            return res.json();
+        })
+        .then(data => {
+            if(data && data.id) {
+                window.location.href = '/quotations/' + data.id;
             }
         })
         .catch(err => {
-            errDiv.innerText = err.message || 'Validation Failed. Please check phone and email uniqueness.';
-            errDiv.classList.remove('d-none');
-        })
-        .finally(() => {
+            console.error("Save error:", err);
+            alert("Error saving quotation");
+            btn.innerHTML = originalHtml;
             btn.disabled = false;
-            btn.innerText = 'Save Customer';
         });
-    });
-    document.getElementById('quotationForm').addEventListener('submit', function(e) {
-        const errorDiv = document.getElementById('formValidationError');
-        const errorText = document.getElementById('formValidationErrorText');
-        const btn = document.getElementById('submitBtn');
-        
-        errorDiv.classList.add('d-none');
-
-        // Verify that at least one item row exists with sizes
-        const itemGroups = document.querySelectorAll('#itemsTable tbody.item-group');
-        if (itemGroups.length === 0) {
-            e.preventDefault();
-            errorText.innerText = 'Validation Error: Please add at least one window component item before saving.';
-            errorDiv.classList.remove('d-none');
-            return false;
-        }
-
-        if (!this.checkValidity()) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const invalidInput = this.querySelector(':invalid');
-            if (invalidInput) {
-                invalidInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => invalidInput.focus(), 300);
-                
-                let labelName = 'required fields';
-                const formGroup = invalidInput.closest('.mb-3, td, div');
-                if (formGroup) {
-                    const label = formGroup.querySelector('label, th');
-                    if (label) labelName = label.innerText.replace('*', '').trim();
-                }
-                
-                errorText.innerText = `Validation Error: Please fill in "${labelName}" properly.`;
-                errorDiv.classList.remove('d-none');
-            }
-            this.classList.add('was-validated');
-            return false;
-        }
-
-        // Disable button & show spinner during processing
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Generating EvA PDF & Saving...`;
-    });
+    }
 </script>
 @endsection

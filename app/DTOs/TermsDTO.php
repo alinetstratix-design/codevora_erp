@@ -16,14 +16,14 @@ class TermsDTO
         $this->terms = !empty($terms) ? $terms : [
             "Payments terms: -\n  a. 100% Advance along with order, if it is less than INR 100000.\n  b. 50% advance along with order, 50% before delivery, if it is more than INR 100000.",
             "Validation of quote 30 days, total execution of project should be completed latest by 3-months.",
-            "P.O & Payments should made in the name of SHANI CORPORATION LIMITED.",
+            "P.O & Payments should be made in favor of the authorized company entity.",
             "The prices are based on the sizes provided by the customer. The prices are valid for variation in sizes up to +/- 30mm per window provided the design and style of product remains unchanged. The customer will be charged on pro-rate basis for difference between the actual sizes and given sizes, if any, beyond the above variation.",
             "After handovering the windows, cleaning not our scope.",
             "Windows security tape should be remove while installing windows freely, After installation security tape will be removed by us that should be chargeable per window INR 100.",
-            "If any other commitments given by our sales team, before placing order please call us . Cell : +91 9599543500",
+            "If any other commitments given by our sales team, please confirm with company management before placing order.",
             "After handovering windows, If any service require related to windows & doors , that should be chargeable. Per visit - INR 350.",
             "Material unloading & storage should be your scope.",
-            "All disputes shall be subject jurisdiction only."
+            "All disputes shall be subject to local jurisdiction only."
         ];
 
         $this->installationPrerequisites = !empty($installationPrerequisites) ? $installationPrerequisites : [

@@ -10,54 +10,57 @@ class Quotation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'quotation_number',
+        'quotation_number', // Or maybe this should be unfillable too if generated
         'quotation_date',
         'valid_until',
         'customer_id',
-        'company_setting_id',
         'project_name',
         'project_location',
         'sales_person',
         'remarks',
-        'subtotal',
-        'discount',
-        'transportation',
-        'installation',
-        'gst',
-        'grand_total',
-        'amount_in_words',
         'status',
-        'pdf_path',
         
         // Retained old fields for safety if needed
         'client_name',
         'opportunity_no',
         'address',
-        'material_value',
-        'net_value',
-        'total_glass_cost',
-        'installation_cost_rate',
-        'freight_charges_rate',
-        'discount_percent',
-        'tax_percent',
-        'tax_amount',
-        'additional_charges',
-        'total_sqmt',
-        'total_units',
         'terms_conditions',
         'bank_details',
-        
-        // EvA Summary fields
+
+        // Costing Fields from Phase C
+        'bom_cost_total',
+        'additional_cost_total',
+        'cost_basis_total',
+        'margin_total',
+        'taxable_amount',
         'no_of_components',
         'total_area_sqft',
         'basic_value',
+        'subtotal',
+        'discount',
+        'discount_percent',
+        'transportation',
+        'installation',
+        'tax_percent',
+        'tax_amount',
+        'gst',
+        'gst_percent',
+        'grand_total',
+        'amount_in_words',
+        'pdf_path',
         'total_project_cost',
         'avg_price_sqft_ex_gst',
         'avg_price_sqft_inc_gst',
+        'company_id',
+        'company_setting_id',
         'cover_letter_enclosures',
     ];
 
+    protected $guarded = ['id']; // Everything else is guarded against mass assignment
+
     protected $casts = [
+        'quotation_date' => 'date',
+        'valid_until' => 'date',
         'date' => 'date',
         'valid_till' => 'date',
         'terms_conditions' => 'array',
@@ -67,6 +70,8 @@ class Quotation extends Model
 
     protected static function booted()
     {
+        static::addGlobalScope(new \App\Scopes\CompanyScope);
+
         static::saved(function ($quotation) {
             \Illuminate\Support\Facades\Cache::forget('dashboard.stats');
         });
@@ -89,5 +94,10 @@ class Quotation extends Model
     public function items()
     {
         return $this->hasMany(QuotationItem::class)->orderBy('sort_order', 'asc');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
     }
 }

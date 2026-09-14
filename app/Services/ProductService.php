@@ -15,6 +15,10 @@ class ProductService
             $data['product_code'] = 'PRD-' . strtoupper(Str::random(6));
             $data['default_rate'] = $data['base_rate'] ?? 0;
 
+            if (auth()->check() && auth()->user()->company_id && empty($data['company_id'])) {
+                $data['company_id'] = auth()->user()->company_id;
+            }
+
             if ($imageFile) {
                 $path = $imageFile->store('public/products');
                 $data['default_image'] = str_replace('public/', 'storage/', $path);

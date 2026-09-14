@@ -30,8 +30,10 @@ class PDFService
             $pdf = Pdf::loadView('pdf.quotation', [
                 'report' => $reportDto,
                 'reportData' => $reportData,
-                'quotation' => $quotation,
-                'company' => $quotation->companySetting ?? \App\Models\CompanySetting::first()
+                'company' => $quotation->companySetting 
+                    ?? \App\Models\CompanySetting::where('company_id', $quotation->company_id)->first() 
+                    ?? \App\Models\CompanySetting::find($quotation->company_id) 
+                    ?? \App\Models\CompanySetting::first()
             ])
             ->setPaper('a4', 'portrait')
             ->setOption('isPhpEnabled', true)
@@ -61,12 +63,13 @@ class PDFService
      */
     public function getPhysicalPath(Quotation $quotation): string
     {
-        if (empty($quotation->pdf_path) || !Storage::disk('public')->exists(str_replace('storage/', '', $quotation->pdf_path))) {
-            $this->generateQuotationPDF($quotation);
-            $quotation->refresh();
+        $relativePath = !empty($quotation->pdf_path) ? str_replace('storage/', '', $quotation->pdf_path) : '';
+        if (empty($relativePath) || !Storage::disk('public')->exists($relativePath)) {
+            $newPath = $this->generateQuotationPDF($quotation);
+            $quotation->update(['pdf_path' => $newPath]);
+            $relativePath = str_replace('storage/', '', $newPath);
         }
 
-        $relativePath = str_replace('storage/', '', $quotation->pdf_path);
         return Storage::disk('public')->path($relativePath);
     }
 

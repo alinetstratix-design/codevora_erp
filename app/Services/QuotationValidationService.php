@@ -47,15 +47,16 @@ class QuotationValidationService
             !empty($custPhone), 'Customer contact number is missing'
         );
 
-        $projectLocation = $quotation->project_location ?: ($quotation->customer->address ?? '');
+        $projectLocation = $quotation->project_location ?: ($quotation->address ?: ($quotation->customer->address ?? ''));
         $rules[] = new ValidationItemDTO(
             'cust_address', 'Project Site Address', 'Customer Information',
             !empty($projectLocation), 'Project site location address is missing'
         );
 
+        $custEmail = $quotation->customer?->email;
         $rules[] = new ValidationItemDTO(
             'cust_email', 'Customer Email Address', 'Customer Information',
-            !empty($quotation->customer?->email), 'Customer email is missing'
+            !empty($custEmail) || !empty($custPhone), 'Customer email is missing'
         );
 
         $rules[] = new ValidationItemDTO(

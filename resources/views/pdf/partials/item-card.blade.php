@@ -9,7 +9,7 @@
         </tr>
         <tr>
             <td>Name :</td>
-            <td>{{ $item->position ?? '' }}</td>
+            <td>{{ !empty($item->name) && $item->name !== $item->position ? $item->name . ' (' . $item->position . ')' : ($item->name ?: $item->position) }}</td>
             <td>Profile System :</td>
             <td>{{ $item->profileSystem ?? '' }}</td>
         </tr>
@@ -19,6 +19,12 @@
             <td>Glass :</td>
             <td>{{ $item->glass->type ?? '' }}</td>
         </tr>
+        <tr>
+            <td>Mesh :</td>
+            <td>{{ $item->commercialSpecs['Mosquito Mesh'] ?? ($item->profile->meshType ?? 'No Mesh') }}</td>
+            <td>Hardware :</td>
+            <td>{{ $item->hardware->brand ?? 'Standard' }} ({{ $item->hardware->color ?? 'White' }})</td>
+        </tr>
     </table>
 
     <!-- Card Body (Left CAD Drawing, Right Computed Values & Specs) -->
@@ -26,8 +32,12 @@
         <tr>
             <!-- Left CAD Drawing Box -->
             <td class="drawing-box">
-                {!! $item->drawing->svgHtml ?? '' !!}
-                <div class="view-caption">{{ $item->drawing->viewCaption ?? 'View From Inside' }}</div>
+                <div class="drawing-wrapper">
+                    @if(!empty($item->drawing->svgHtml))
+                        <img src="data:image/svg+xml;base64,{{ base64_encode($item->drawing->svgHtml) }}" class="drawing-img" alt="Technical Drawing" />
+                    @endif
+                    <div class="view-caption">{{ $item->drawing->viewCaption ?? 'View From Inside' }}</div>
+                </div>
             </td>
 
             <!-- Right Computed Values & Profile/Accessories Specs -->
@@ -89,8 +99,18 @@
                 </table>
             </td>
         </tr>
+        @if(!empty($item->sizes) && count($item->sizes) > 1)
         <tr>
-            <td colspan="2" style="border-top: 1px solid #a6b9d0; padding: 3px 5px; font-size: 8pt;">Remarks : {{ $item->notes ?? '' }}</td>
+            <td colspan="2" style="border-top: 1px dashed #a6b9d0; padding: 3px 5px; font-size: 7.5pt; background-color: #f8fafc;">
+                <strong>Size Breakdown ({{ count($item->sizes) }} sizes):</strong>
+                @foreach($item->sizes as $idx => $sz)
+                    <span>#{{ $idx + 1 }}: {{ is_array($sz) ? $sz['width'] : $sz->width }}x{{ is_array($sz) ? $sz['height'] : $sz->height }} {{ is_array($sz) ? ($sz['unit'] ?? 'mm') : ($sz->unit ?? 'mm') }} (Qty: {{ is_array($sz) ? ($sz['quantity'] ?? 1) : ($sz->quantity ?? 1) }}){{ !$loop->last ? ' | ' : '' }}</span>
+                @endforeach
+            </td>
+        </tr>
+        @endif
+        <tr>
+            <td colspan="2" class="card-remarks"><strong>Remarks :</strong> {{ $item->notes ?? '' }}</td>
         </tr>
     </table>
 </div>

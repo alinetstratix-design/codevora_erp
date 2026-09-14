@@ -50,14 +50,24 @@ class FinancialSummaryDTO
         $this->taxableAmount = $this->subtotal - $this->discount + $this->transportation + $this->installation;
         $this->formattedTaxableAmount = number_format($this->taxableAmount, 2, '.', ',') . ' INR';
 
-        $this->gstPercent = (float)($data['gst_percent'] ?? $data['tax_percent'] ?? 18);
-        $this->gstAmount = (float)($data['gst'] ?? $data['tax_amount'] ?? 0);
+        $this->gstPercent = (float)($data['gst_percent'] ?: ($data['tax_percent'] ?: 18));
+        if ($this->gstPercent <= 0) {
+            $this->gstPercent = 18.0;
+        }
+
+        $this->gstAmount = (float)($data['gst'] ?: ($data['tax_amount'] ?: 0));
+        if ($this->gstAmount <= 0 && $this->taxableAmount > 0) {
+            $this->gstAmount = round($this->taxableAmount * ($this->gstPercent / 100), 2);
+        }
         $this->formattedGstAmount = number_format($this->gstAmount, 2, '.', ',') . ' INR';
 
         $this->additionalCharges = (float)($data['additional_charges'] ?? 0);
         $this->formattedAdditionalCharges = number_format($this->additionalCharges, 2, '.', ',') . ' INR';
 
-        $this->grandTotal = (float)($data['grand_total'] ?? 0);
+        $this->grandTotal = (float)($data['grand_total'] ?: 0);
+        if ($this->grandTotal <= 0 && $this->taxableAmount > 0) {
+            $this->grandTotal = round($this->taxableAmount + $this->gstAmount + $this->additionalCharges, 2);
+        }
         $this->formattedGrandTotal = number_format($this->grandTotal, 2, '.', ',') . ' INR';
 
         $this->amountInWords = $data['amount_in_words'] ?? '';

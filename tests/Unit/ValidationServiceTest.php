@@ -7,7 +7,7 @@ use App\Models\Quotation;
 use App\Models\QuotationItem;
 use App\Models\Customer;
 use App\Models\CompanySetting;
-use App\Services\QuotationCalculator;
+use App\Services\QuotationCalculationService;
 use App\Services\QuotationReportBuilder;
 use App\Services\QuotationValidationService;
 
@@ -15,24 +15,32 @@ class ValidationServiceTest extends TestCase
 {
     public function test_quotation_validation_service_evaluates_rules_and_score()
     {
-        $calculator = new QuotationCalculator();
+        $calculator = app(QuotationCalculationService::class);
         $builder = new QuotationReportBuilder($calculator);
         $validationService = new QuotationValidationService($builder);
 
         $customer = new Customer([
-            'name' => 'AMBALA AIRFORCE',
+            'name' => 'Apex Infra Projects',
             'phone' => '9599543500',
-            'email' => 'query@sclgroup.co',
-            'address' => 'AMBALA AIRFORCE'
+            'email' => 'contact@apexinfra.com',
+            'address' => 'Sector 62, Noida'
         ]);
 
         $companySetting = new CompanySetting([
-            'company_name' => 'SHANI CORPORATION LIMITED',
-            'gst_number' => '09AAAAA0000A1Z5',
-            'address' => 'Sikandrabad, UP',
-            'phone' => '9599543500',
-            'email' => 'query@sclgroup.co',
-            'bank_details' => '50% Advance with Order'
+            'company_name' => 'SHAH ENTERPRISES',
+            'gst_number' => '07AAAAA0000A1Z5',
+            'address' => 'Industrial Area, New Delhi',
+            'phone' => '+91 9599543500',
+            'email' => 'shahenterprises044@gmail.com',
+            'bank_details' => '50% Advance with Order',
+            'terms_conditions' => [
+                ['term' => '10 years warranty on profiles'],
+                ['term' => 'Variation order clause applicable'],
+                ['term' => 'Quality assurance strictly maintained'],
+            ],
+            'installation_prerequisites' => [
+                'Site readiness required'
+            ]
         ]);
 
         $quotation = new Quotation([
@@ -57,6 +65,7 @@ class ValidationServiceTest extends TestCase
         $item1 = new QuotationItem([
             'item_code' => 'W1',
             'position' => 'W1',
+            'profile_brand' => 'CORA',
             'profile_system' => 'CORA - 60MM CASEMENT SERIES',
             'glass_type' => '5mm Clear Toughened',
             'hardware_brand' => 'CORA Hardware',

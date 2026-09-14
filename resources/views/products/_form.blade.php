@@ -97,6 +97,50 @@
     </div>
 </div>
 
+<!-- Advanced BOM & Pricing (EvA Engine) -->
+<h5 class="mt-4 border-bottom pb-2 text-success"><i class="bi bi-calculator"></i> Advanced BOM & Dynamic Pricing</h5>
+<p class="small text-muted mb-4">Set these values to enable dynamic price calculation based on actual material usage during Quotation.</p>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Profile Wt. (Kg/m)</label>
+        <input type="number" step="0.001" name="profile_weight_per_mtr" class="form-control" value="{{ old('profile_weight_per_mtr', $product->profile_weight_per_mtr ?? '0') }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Profile Rate (₹/Kg)</label>
+        <input type="number" step="0.01" name="profile_rate_per_kg" class="form-control" value="{{ old('profile_rate_per_kg', $product->profile_rate_per_kg ?? '0') }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Glass Rate (₹/Sq.Ft)</label>
+        <input type="number" step="0.01" name="glass_rate_per_sqft" class="form-control" value="{{ old('glass_rate_per_sqft', $product->glass_rate_per_sqft ?? '0') }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Hardware Kit (₹/Item)</label>
+        <input type="number" step="0.01" name="hardware_kit_cost" class="form-control" value="{{ old('hardware_kit_cost', $product->hardware_kit_cost ?? '0') }}">
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Wastage (%)</label>
+        <input type="number" step="0.01" name="wastage_percent" class="form-control" value="{{ old('wastage_percent', $product->wastage_percent ?? '10') }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Profit Margin (%)</label>
+        <input type="number" step="0.01" name="profit_margin_percent" class="form-control" value="{{ old('profit_margin_percent', $product->profit_margin_percent ?? '20') }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Labor (₹/Sq.Ft)</label>
+        <input type="number" step="0.01" name="labor_rate_per_sqft" class="form-control" value="{{ old('labor_rate_per_sqft', $product->labor_rate_per_sqft ?? '0') }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-bold">Calculation Formula</label>
+        <select name="profile_calc_formula" class="form-select">
+            <option value="PERIMETER" {{ old('profile_calc_formula', $product->profile_calc_formula ?? '') == 'PERIMETER' ? 'selected' : '' }}>Standard Perimeter (2W+2H)</option>
+            <option value="FIXED_MULTIPLIER" {{ old('profile_calc_formula', $product->profile_calc_formula ?? '') == 'FIXED_MULTIPLIER' ? 'selected' : '' }}>Old Fixed Multiplier</option>
+        </select>
+    </div>
+</div>
+
 <!-- Exhaustive Detail Templates (Linked to 0% Tolerance PDF Engine) -->
 <h5 class="mt-4 border-bottom pb-2 text-primary"><i class="bi bi-sliders"></i> Default Automation Specs (Optional)</h5>
 <p class="small text-muted mb-4">Filling these out here will auto-populate the Detailed Specs modal when a sales executive selects this product in a Quotation. Blank fields will naturally be ignored by the PDF engine.</p>

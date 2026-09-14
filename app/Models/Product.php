@@ -10,7 +10,13 @@ class Product extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted()
+    {
+        static::addGlobalScope(new \App\Scopes\CompanyScope);
+    }
+
     protected $fillable = [
+        'company_id',
         'product_code',
         'name',
         'material',
@@ -30,10 +36,33 @@ class Product extends Model
         'status',
         'profile_details',
         'accessories_details',
+        'profile_weight_per_mtr',
+        'profile_rate_per_kg',
+        'glass_rate_per_sqft',
+        'hardware_kit_cost',
+        'wastage_percent',
+        'profit_margin_percent',
+        'labor_rate_per_sqft',
+        'profile_calc_formula',
     ];
 
     protected $casts = [
         'profile_details' => 'array',
         'accessories_details' => 'array',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
+
+    public function components()
+    {
+        return $this->hasMany(BomRule::class, 'product_id');
+    }
+
+    public function designs()
+    {
+        return $this->belongsToMany(Design::class, 'product_design');
+    }
 }

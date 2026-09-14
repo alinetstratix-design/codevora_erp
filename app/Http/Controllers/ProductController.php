@@ -31,6 +31,14 @@ class ProductController extends CrudController
             'status' => 'string',
             'profile_details' => 'nullable|array',
             'accessories_details' => 'nullable|array',
+            'profile_weight_per_mtr' => 'nullable|numeric',
+            'profile_rate_per_kg' => 'nullable|numeric',
+            'glass_rate_per_sqft' => 'nullable|numeric',
+            'hardware_kit_cost' => 'nullable|numeric',
+            'wastage_percent' => 'nullable|numeric',
+            'profit_margin_percent' => 'nullable|numeric',
+            'labor_rate_per_sqft' => 'nullable|numeric',
+            'profile_calc_formula' => 'nullable|string',
         ];
     }
 
@@ -56,6 +64,14 @@ class ProductController extends CrudController
             'status' => 'string',
             'profile_details' => 'nullable|array',
             'accessories_details' => 'nullable|array',
+            'profile_weight_per_mtr' => 'nullable|numeric',
+            'profile_rate_per_kg' => 'nullable|numeric',
+            'glass_rate_per_sqft' => 'nullable|numeric',
+            'hardware_kit_cost' => 'nullable|numeric',
+            'wastage_percent' => 'nullable|numeric',
+            'profit_margin_percent' => 'nullable|numeric',
+            'labor_rate_per_sqft' => 'nullable|numeric',
+            'profile_calc_formula' => 'nullable|string',
         ];
     }
 }

@@ -21,5 +21,8 @@ class DatabaseSeeder extends Seeder
     {
         // 1. Run LookupSeeder
         $this->call(LookupSeeder::class);
+
+        // 2. Run ProductionMasterSeeder
+        $this->call(ProductionMasterSeeder::class);
     }
 }

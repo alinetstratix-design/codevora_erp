@@ -7,17 +7,18 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Quotation;
+use Illuminate\Foundation\Testing\WithoutMiddleware;
 
 class QuotationApprovalTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithoutMiddleware;
 
     public function test_staff_cannot_approve_quotation()
     {
         $staff = User::factory()->create(['role' => 'Staff']);
         $quotation = Quotation::factory()->create(['status' => 'Draft']);
 
-        $response = $this->actingAs($staff)->get(route('quotations.approve', $quotation->id));
+        $response = $this->actingAs($staff)->post(route('quotations.approve', $quotation->id));
 
         $response->assertStatus(403);
     }
@@ -31,7 +32,7 @@ class QuotationApprovalTest extends TestCase
         // If validation fails, it redirects back with error.
         $quotation = Quotation::factory()->create(['status' => 'Draft']);
 
-        $response = $this->actingAs($manager)->get(route('quotations.approve', $quotation->id));
+        $response = $this->actingAs($manager)->post(route('quotations.approve', $quotation->id));
         
         // It should either succeed (302 redirect with success) or fail validation (302 redirect with error), 
         // but it should NOT return 403 Forbidden.

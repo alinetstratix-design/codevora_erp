@@ -36,7 +36,11 @@ class SvgGenerator
         $x = $marginLeft + ($drawWidth - $boxWidth) / 2;
         $y = $marginTop + ($drawHeight - $boxHeight) / 2;
 
-        $isFan = (bool)($metadata['fan_cutout'] ?? (stripos($type, 'fan') !== false || ($w < 700 && $h < 700 && stripos($type, 'casement') !== false)));
+        $cleanUnit = strtolower(trim($unit ?: 'mm'));
+        $wMm = \App\Services\BOM\UnitConverter::convert($w, $cleanUnit, 'mm');
+        $hMm = \App\Services\BOM\UnitConverter::convert($h, $cleanUnit, 'mm');
+
+        $isFan = (bool)($metadata['fan_cutout'] ?? (stripos($type, 'fan') !== false || ($wMm < 700 && $hMm < 700 && stripos($type, 'casement') !== false)));
         $isSliding = (bool)(stripos($type, 'sliding') !== false || (isset($metadata['tracks']) && $metadata['tracks'] > 1));
 
         $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '.$svgWidth.' '.$svgHeight.'" width="100%" height="100%" style="background:#fff;">';
@@ -135,7 +139,7 @@ class SvgGenerator
 
         } else {
             // Single / Double Casement Window or Door Diagram
-            $isDouble = (bool)($w >= 1100);
+            $isDouble = (bool)($wMm >= 1100);
 
             // S1 Tag top left
             $svg .= '<rect x="'.($x+5).'" y="'.($y+5).'" width="20" height="10" fill="#ffffff" stroke="#1f618d" stroke-width="0.8"/>';
@@ -188,15 +192,17 @@ class SvgGenerator
             $svg .= '<text x="'.($x+$boxWidth-13).'" y="'.($y+$boxHeight-8).'" font-family="sans-serif" font-size="6" fill="#000" text-anchor="middle">F1</text>';
         }
 
+        $unitLabel = ($cleanUnit === 'inch' || $cleanUnit === 'in') ? ' in' : ($cleanUnit === 'ft' ? ' ft' : ($cleanUnit === 'cm' ? ' cm' : ' mm'));
+
         // Width Dimension Arrow (Bottom)
         $arrowY = $y + $boxHeight + 10;
         $svg .= '<line x1="'.$x.'" y1="'.$arrowY.'" x2="'.($x+$boxWidth).'" y2="'.$arrowY.'" stroke="#333" stroke-width="1" marker-start="url(#arr-start)" marker-end="url(#arr-end)"/>';
-        $svg .= '<text x="'.($x+($boxWidth/2)).'" y="'.($arrowY+12).'" font-family="sans-serif" font-size="10" font-weight="bold" fill="#000" text-anchor="middle">'.number_format($w, 2, '.', '').'</text>';
+        $svg .= '<text x="'.($x+($boxWidth/2)).'" y="'.($arrowY+12).'" font-family="sans-serif" font-size="9" font-weight="bold" fill="#000" text-anchor="middle">'.number_format($w, 2, '.', '').$unitLabel.'</text>';
 
         // Height Dimension Arrow (Left)
         $arrowX = $x - 10;
         $svg .= '<line x1="'.$arrowX.'" y1="'.$y.'" x2="'.$arrowX.'" y2="'.($y+$boxHeight).'" stroke="#333" stroke-width="1" marker-start="url(#arr-start)" marker-end="url(#arr-end)"/>';
-        $svg .= '<text x="'.($arrowX-4).'" y="'.($y+($boxHeight/2)).'" font-family="sans-serif" font-size="10" font-weight="bold" fill="#000" text-anchor="middle" transform="rotate(-90, '.($arrowX-4).', '.($y+($boxHeight/2)).')">'.number_format($h, 2, '.', '').'</text>';
+        $svg .= '<text x="'.($arrowX-4).'" y="'.($y+($boxHeight/2)).'" font-family="sans-serif" font-size="9" font-weight="bold" fill="#000" text-anchor="middle" transform="rotate(-90, '.($arrowX-4).', '.($y+($boxHeight/2)).')">'.number_format($h, 2, '.', '').$unitLabel.'</text>';
 
         $svg .= '</svg>';
 

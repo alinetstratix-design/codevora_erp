@@ -28,47 +28,43 @@ class QuotationController extends Controller
     public function store(QuotationRequest $request)
     {
         $validated = $request->validated();
+        
+        $quotation = $this->quotationService->saveDraft($validated);
+
+        return response()->json(new \App\Http\Resources\QuotationResource($quotation), 201);
+    }
+
+    public function calculatePreview(QuotationRequest $request)
+    {
+        $validated = $request->validated();
+        // Since calculateQuotationData was moved to QuotationCalculationService but exposed via QuotationService
+        // Let's call it via quotationService or inject QuotationCalculationService
         $data = $this->quotationService->calculateQuotationData($validated);
-
-        return DB::transaction(function () use ($data) {
-            $quotation = Quotation::create($data['quotation_data']);
-
-            foreach ($data['items'] as $item) {
-                $quotation->items()->create($item);
-            }
-
-            return response()->json(new \App\Http\Resources\QuotationResource($quotation->load('items')), 201);
-        });
+        return response()->json($data);
     }
 
     public function show($id)
     {
-        $quotation = Quotation::with('items')->findOrFail($id);
+        $quotation = Quotation::with('items.sizes')->findOrFail($id);
+        $this->authorize('view', $quotation);
         return new \App\Http\Resources\QuotationResource($quotation);
     }
 
     public function update(QuotationRequest $request, $id)
     {
         $quotation = Quotation::findOrFail($id);
+        $this->authorize('update', $quotation);
         $validated = $request->validated();
-        $data = $this->quotationService->calculateQuotationData($validated);
+        
+        $quotation = $this->quotationService->updateQuotation($quotation, $validated);
 
-        return DB::transaction(function () use ($data, $quotation) {
-            $quotation->update($data['quotation_data']);
-
-            // Sync items by deleting existing and recreating
-            $quotation->items()->delete();
-            foreach ($data['items'] as $item) {
-                $quotation->items()->create($item);
-            }
-
-            return response()->json(new \App\Http\Resources\QuotationResource($quotation->load('items')));
-        });
+        return response()->json(new \App\Http\Resources\QuotationResource($quotation));
     }
 
     public function destroy($id)
     {
         $quotation = Quotation::findOrFail($id);
+        $this->authorize('delete', $quotation);
         $quotation->delete();
         return response()->json(['success' => true]);
     }
@@ -100,6 +96,7 @@ class QuotationController extends Controller
     {
         try {
             $quotation = Quotation::with(['items.sizes', 'customer', 'companySetting'])->findOrFail($id);
+            $this->authorize('view', $quotation);
             $filePath = $this->pdfService->generateQuotationPDF($quotation);
             $url = url('/api/quotations/' . $id . '/preview'); // Using authenticated API route
 
@@ -122,12 +119,14 @@ class QuotationController extends Controller
     public function previewPdf($id)
     {
         $quotation = Quotation::with(['items.sizes', 'customer', 'companySetting'])->findOrFail($id);
+        $this->authorize('view', $quotation);
         return $this->pdfService->streamPDF($quotation);
     }
 
     public function downloadPdf($id)
     {
         $quotation = Quotation::with(['items.sizes', 'customer', 'companySetting'])->findOrFail($id);
+        $this->authorize('view', $quotation);
         return $this->pdfService->downloadPDF($quotation);
     }
 }

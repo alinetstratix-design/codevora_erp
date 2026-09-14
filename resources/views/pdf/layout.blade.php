@@ -5,24 +5,24 @@
     <title>@yield('title', 'Quotation')</title>
     <style>
         @page {
-            margin: 95px 25px 35px 25px;
+            margin: 98px 25px 25px 25px;
         }
 
         header {
             position: fixed;
-            top: -85px;
+            top: -88px;
             left: 0px;
             right: 0px;
-            height: 75px;
+            height: 80px;
             font-family: Arial, Helvetica, sans-serif;
         }
 
         footer {
             position: fixed;
-            bottom: -22px;
+            bottom: -18px;
             left: 0px;
             right: 0px;
-            height: 18px;
+            height: 16px;
             font-family: Arial, Helvetica, sans-serif;
             font-size: 8pt;
             color: #000000;
@@ -106,6 +106,7 @@
             text-align: right;
             color: #000000;
             padding-top: 1px;
+            margin-bottom: 3px;
         }
 
         /* Cover Letter */
@@ -133,7 +134,8 @@
             width: 100%;
             border: 1px solid #a6b9d0;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-top: 4px;
+            margin-bottom: 0px;
             page-break-inside: avoid;
         }
         .card-meta-table {
@@ -143,7 +145,7 @@
             font-size: 8.5pt;
         }
         .card-meta-table td {
-            padding: 3px 5px;
+            padding: 3px 6px;
             font-weight: bold;
             border: 1px solid #c4d3e4;
         }
@@ -156,15 +158,34 @@
             padding: 0;
         }
         .drawing-box {
-            width: 35%;
+            width: 36%;
             border-right: 1px solid #a6b9d0;
             text-align: center;
-            padding: 4px;
+            padding: 6px 4px;
+            vertical-align: middle;
+            background-color: #ffffff;
+        }
+        .drawing-wrapper {
+            display: inline-block;
+            text-align: center;
+            margin: 0 auto;
+            vertical-align: middle;
+        }
+        .drawing-box .drawing-img,
+        .drawing-box svg {
+            max-width: 175px;
+            max-height: 185px;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
         }
         .view-caption {
             font-size: 8pt;
             color: #333333;
-            margin-top: 2px;
+            font-weight: bold;
+            margin-top: 5px;
+            text-align: center;
         }
 
         /* Computed Table */
@@ -176,11 +197,11 @@
         .computed-header {
             background-color: #b4c6e7;
             font-weight: bold;
-            padding: 3px 5px;
+            padding: 3px 6px;
             border-bottom: 1px solid #a6b9d0;
         }
         .computed-table td {
-            padding: 2.5px 5px;
+            padding: 2.5px 6px;
             border-bottom: 1px solid #e0e6ed;
             border-right: 1px solid #e0e6ed;
         }
@@ -194,21 +215,27 @@
             width: 100%;
             border-collapse: collapse;
             border-top: 1px solid #a6b9d0;
-            font-size: 7.5pt;
+            font-size: 7pt;
         }
         .specs-split-table th {
             background-color: #b4c6e7;
             text-align: left;
-            padding: 2.5px 5px;
+            padding: 2.5px 6px;
             font-weight: bold;
             border-bottom: 1px solid #a6b9d0;
             border-right: 1px solid #a6b9d0;
         }
         .specs-split-table td {
-            padding: 2.5px 5px;
+            padding: 2px 6px;
             vertical-align: top;
             border-right: 1px solid #e0e6ed;
-            line-height: 1.3;
+            line-height: 1.25;
+        }
+        .card-remarks {
+            border-top: 1px solid #a6b9d0;
+            padding: 3px 6px;
+            font-size: 8pt;
+            background-color: #f8fafc;
         }
 
         /* Summary Table Page 28 */

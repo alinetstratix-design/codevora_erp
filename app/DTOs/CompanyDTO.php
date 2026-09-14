@@ -15,14 +15,17 @@ class CompanyDTO
 
     public function __construct(array $data = [])
     {
-        $this->companyName = $data['company_name'] ?? 'SHANI CORPORATION LIMITED';
+        $this->companyName = $data['company_name'] ?? config('app.name', 'Codevora ERP');
         $this->logo = $data['logo'] ?? '';
-        $this->address = $data['address'] ?? 'D-42, E-42 & E-43 , Gopalpur Industrial Area , Sikandrabad , Bulandshar , Uttar Pradesh -203205';
-        $this->phone = $data['phone'] ?? '+91 9599543500';
-        $this->email = $data['email'] ?? 'query@sclgroup.co';
+        $this->address = $data['address'] ?? '';
+        $this->phone = $data['phone'] ?? '';
+        $this->email = $data['email'] ?? '';
         $this->website = $data['website'] ?? '';
         $this->gstin = $data['gstin'] ?? '';
-        $this->formattedContactLine = "Contact No. : {$this->phone} | Email : {$this->email}";
+        $contactParts = [];
+        if (!empty($this->phone)) $contactParts[] = "Contact No. : {$this->phone}";
+        if (!empty($this->email)) $contactParts[] = "Email : {$this->email}";
+        $this->formattedContactLine = implode(' | ', $contactParts);
     }
 
     public function toArray(): array

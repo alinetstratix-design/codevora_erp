@@ -10,6 +10,7 @@ class CompanySetting extends Model
     use HasFactory;
 
     protected $fillable = [
+        'company_id',
         'company_name',
         'logo',
         'gst_number',
@@ -29,4 +30,9 @@ class CompanySetting extends Model
         'terms_conditions' => 'array',
         'installation_prerequisites' => 'array',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
 }

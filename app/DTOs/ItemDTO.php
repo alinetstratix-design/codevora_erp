@@ -45,6 +45,7 @@ class ItemDTO
     public array $commercialSpecs;
     public array $inclusions;
     public array $exclusions;
+    public array $sizes;
 
     public string $notes;
 
@@ -54,7 +55,7 @@ class ItemDTO
         $this->itemCode = $data['item_code'] ?? $data['code'] ?? 'W1';
         $this->name = $data['product_name'] ?? $data['system_name'] ?? $this->itemCode;
         $this->position = $data['position'] ?? $this->itemCode;
-        $this->profileSystem = $data['profile_system'] ?? 'CORA - 60MM CASEMENT SERIES';
+        $this->profileSystem = $data['profile_system'] ?? $data['profile_series'] ?? $data['system_name'] ?? 'CORA - 60MM CASEMENT SERIES';
         $this->location = $data['location'] ?? 'Master Bedroom';
 
         $this->width = (float)($data['width'] ?? $data['dimension_w'] ?? 0);
@@ -63,7 +64,7 @@ class ItemDTO
 
         $this->formattedWidth = number_format($this->width, 2, '.', '');
         $this->formattedHeight = number_format($this->height, 2, '.', '');
-        $this->formattedSize = "W = {$this->formattedWidth}; H = {$this->formattedHeight}";
+        $this->formattedSize = "W = {$this->formattedWidth} {$this->unit}; H = {$this->formattedHeight} {$this->unit}";
 
         $this->sqftArea = (float)($data['area'] ?? 0);
         $this->formattedSqftArea = number_format($this->sqftArea, 3, '.', '') . ' Sq.Ft.';
@@ -84,6 +85,7 @@ class ItemDTO
         $this->formattedWeightKg = number_format($this->weightKg, 3, '.', '') . ' KG';
 
         $this->notes = $data['notes'] ?? $data['remarks'] ?? '';
+        $this->sizes = $data['sizes'] ?? [];
 
         $this->drawing = $drawing ?? new DrawingDTO();
         $this->profile = $profile ?? new ProfileDTO($data['profile_details'] ?? []);
@@ -96,18 +98,19 @@ class ItemDTO
             'Window / Door Type' => $data['opening_type'] ?? 'Casement Window Outward',
             'Profile Brand' => $data['profile_brand'] ?? 'CORA',
             'Profile Series' => $this->profileSystem,
+            'Profile Color' => $this->profile->color ?? ($data['color'] ?? ($data['profile_color'] ?? 'WHITE')),
             'Wall Thickness' => '2.5 mm Class A',
             'Insulation Chambers' => '3-Chamber High Thermal',
             'Steel Reinforcement' => 'Yes (Galvanized Steel 1.5mm Box)',
             'Glass Make' => 'Saint-Gobain Glass',
             'Glass Type' => $this->glass->type ?? '5mm Clear Toughened',
-            'Glass Thickness' => '5.0 mm',
+            'Glass Thickness' => $this->glass->thickness ?? ($data['glass_thickness'] ?? '5.0 mm'),
             'Glass Performance' => 'Acoustic & Solar Control',
-            'Mosquito Mesh' => $data['mesh_type'] ?? 'No Mesh',
+            'Mosquito Mesh' => $data['mesh_type'] ?? ($this->profile->meshType ?? 'No Mesh'),
             'Hardware Brand' => $this->hardware->brand ?? 'CORA Hardware',
-            'Hardware Finish' => 'White Powder Coated',
+            'Hardware Finish' => $this->hardware->color ?? 'White Powder Coated',
             'Locking System' => 'Multi-point Security Lock',
-            'Handle Type' => 'Ergonomic Espag Handle',
+            'Handle Type' => $data['handle_type'] ?? 'Ergonomic Espag Handle',
             'Hinges / Stays' => 'SS304 Friction Hinge Stay',
             'Drainage System' => 'Concealed Water Drainage Caps',
             'Warranty' => '10 Years Profile / 1 Year Hardware',
@@ -170,6 +173,7 @@ class ItemDTO
             'commercial_specs' => $this->commercialSpecs,
             'inclusions' => $this->inclusions,
             'exclusions' => $this->exclusions,
+            'sizes' => $this->sizes,
             'notes' => $this->notes,
         ];
     }

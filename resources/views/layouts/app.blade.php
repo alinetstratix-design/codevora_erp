@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FQMS | @yield('title', 'Dashboard')</title>
 
-    <!-- Google Font: Source Sans Pro -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Google Font: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -14,34 +16,47 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
-    <!-- Custom Style for AdminLTE like feel -->
+    <!-- Custom Premium Style -->
     <style>
         body {
-            background-color: #f4f6f9;
-            font-family: 'Source Sans Pro', sans-serif;
+            background-color: #f7f9fc;
+            font-family: 'Inter', sans-serif;
+            color: #334155;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4, h5, h6, .navbar-brand {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
         }
         .sidebar {
-            background-color: #343a40;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
             min-height: 100vh;
-            color: #fff;
+            color: #e2e8f0;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.05);
         }
         .sidebar a {
-            color: #c2c7d0;
+            color: #94a3b8;
             text-decoration: none;
-            padding: 10px 15px;
+            padding: 12px 18px;
             display: block;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
         .sidebar a:hover, .sidebar a.active {
-            color: #fff;
-            background-color: rgba(255,255,255,.1);
-            border-radius: 5px;
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
         }
         .content-wrapper {
-            padding: 20px;
+            padding: 24px;
         }
         .navbar {
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,.08);
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03) !important;
+            border-bottom: 1px solid #f1f5f9;
         }
     </style>
     @stack('styles')
@@ -75,6 +90,11 @@
                     <i class="bi bi-box-seam me-2"></i> Products
                 </a>
             </li>
+            <li>
+                <a href="{{ route('materials.index') }}" class="nav-link {{ request()->routeIs('materials.*') ? 'active' : '' }}">
+                    <i class="bi bi-layers me-2"></i> Master Data
+                </a>
+            </li>
             <hr class="text-white-50">
             <li>
                 <a href="{{ route('company.edit') }}" class="nav-link {{ request()->routeIs('company.*') ? 'active' : '' }}">
@@ -94,11 +114,19 @@
                 <div class="d-flex">
                     <div class="dropdown">
                         <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> Admin
+                            <i class="bi bi-person-circle me-1"></i> {{ auth()->user()->name ?? 'Admin' }}
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <!-- Placeholder for logout -->
-                            <li><a class="dropdown-item" href="#">Logout</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><span class="dropdown-item-text small text-muted">{{ auth()->user()->email ?? '' }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right me-1"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
                         </ul>
                     </div>
                 </div>

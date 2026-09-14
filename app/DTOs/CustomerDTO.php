@@ -13,7 +13,7 @@ class CustomerDTO
 
     public function __construct(array $data = [])
     {
-        $this->name = $data['name'] ?? 'AMBALA AIRFORCE';
+        $this->name = $data['name'] ?? '';
         $this->companyName = $data['company_name'] ?? '';
         $this->phone = $data['phone'] ?? '';
         $this->email = $data['email'] ?? '';
