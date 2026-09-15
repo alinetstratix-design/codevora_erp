@@ -213,7 +213,16 @@ class QuotationReportBuilder
             $h = $item->height ?? $item->dimension_h ?? 1000;
             $unit = $item->unit ?? 'mm';
             $system = $item->profile_system ?? $item->profile_series ?? $item->system_name ?? 'Casement Series';
-            $metadata = $item->drawing_metadata ?? [];
+            $metadata = is_array($item->drawing_metadata) ? $item->drawing_metadata : [];
+            if (!isset($metadata['mesh_type']) && !empty($item->mesh_type)) {
+                $metadata['mesh_type'] = $item->mesh_type;
+            }
+            if (!isset($metadata['glass_type']) && !empty($item->glass_type)) {
+                $metadata['glass_type'] = $item->glass_type;
+            }
+            if (!isset($metadata['handle_type']) && !empty($item->handle_type)) {
+                $metadata['handle_type'] = $item->handle_type;
+            }
 
             // Enforce Goal #9: Drawing and BOM geometry must come from the same authoritative geometry model.
             // We ignore any frontend rasterized drawing_url and strictly use the backend SvgGenerator.

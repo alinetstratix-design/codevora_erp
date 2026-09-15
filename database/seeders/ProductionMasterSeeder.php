@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\Material;
@@ -40,7 +41,7 @@ class ProductionMasterSeeder extends Seeder
         $setting->save();
 
         // 3. Clean and Populate Production Materials for this company
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
         BomRule::where('company_id', $companyId)->delete();
         Material::where('company_id', $companyId)->delete();
 
@@ -500,6 +501,6 @@ SVG;
             }
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
     }
 }

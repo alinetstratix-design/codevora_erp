@@ -4,12 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PremiumErpSeeder extends Seeder
 {
     public function run()
     {
-        $companyId = 1;
+        $company = DB::table('companies')->first();
+        $companyId = $company ? $company->id : 1;
         
         // 1. Create Materials
         $materialsData = [
@@ -37,7 +39,7 @@ class PremiumErpSeeder extends Seeder
             ['sku' => 'HDW-EPDM-GSK', 'name' => 'EPDM Gasket', 'category' => 'Hardware', 'uom' => 'Mtr', 'cost' => 18.0, 'waste_percent' => 5.0],
         ];
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
         DB::table('materials')->truncate();
         
         $materialMap = [];
@@ -55,7 +57,7 @@ class PremiumErpSeeder extends Seeder
         
         // 2. Create BOM Rules for Product ID 5 (Track Sliding)
         DB::table('bom_rules')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
         
         $productId = 5; // Replace if 5 is not Track Sliding
         

@@ -24,5 +24,31 @@ class DatabaseSeeder extends Seeder
 
         // 2. Run ProductionMasterSeeder
         $this->call(ProductionMasterSeeder::class);
+
+        // 3. Seed Default Admin & System Users
+        $company = \App\Models\Company::first();
+        $companyId = $company ? $company->id : null;
+
+        User::updateOrCreate(
+            ['email' => 'admin@codevora.com'],
+            [
+                'company_id' => $companyId,
+                'name' => 'System Administrator',
+                'password' => Hash::make('password123'),
+                'role' => 'Admin',
+                'status' => 'Active',
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'admin@nexoratech.in'],
+            [
+                'company_id' => $companyId,
+                'name' => 'Ajeem Ali',
+                'password' => Hash::make('password123'),
+                'role' => 'Admin',
+                'status' => 'Active',
+            ]
+        );
     }
 }

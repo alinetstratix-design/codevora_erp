@@ -455,7 +455,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         const list = document.getElementById('design-list');
         list.innerHTML = `<div class="p-2 text-muted small"><span class="spinner-border spinner-border-sm"></span> Loading...</div>`;
 
-        fetch(`/products/${productId}/designs`)
+        fetch(`{{ url('/products') }}/${productId}/designs`)
             .then(res => res.json())
             .then(designs => {
                 if(!designs.length) {
@@ -485,7 +485,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
                             .replace(/\{\{SLIDE_ARROW_END\}\}/g, '350');
                         imgUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(rawTemplate);
                     } else if (d.preview_image) {
-                        imgUrl = `/${d.preview_image}`;
+                        imgUrl = `{{ url('/') }}/${d.preview_image}`;
                     }
                     html += `
                     <div class="card border border-2 shadow-sm cursor-pointer hover-lift design-card flex-shrink-0" 
@@ -874,7 +874,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
             })
         };
 
-        fetch('/quotations/calculate', {
+        fetch(`{{ url('/quotations/calculate') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -970,7 +970,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
         btn.disabled = true;
 
-        fetch('/quotations', {
+        fetch(`{{ url('/quotations') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

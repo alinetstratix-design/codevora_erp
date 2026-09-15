@@ -38,6 +38,9 @@ fi
 
 # Run database migrations
 php artisan migrate --force
+
+# Seed master records, lookups, and default admin user
+php artisan db:seed --force || true
 # Optimize caches for production
 php artisan config:cache || true
 php artisan route:cache || true
