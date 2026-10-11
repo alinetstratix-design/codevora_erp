@@ -39,8 +39,23 @@ fi
 # Run database migrations
 php artisan migrate --force
 
-# Seeding is intentionally NOT run on every start (it used to reset admin passwords).
-# Create the first admin with: php artisan users:create-admin
+# Seed reference lookups (safe/idempotent)
+php artisan db:seed --force || true
+
+# Ensure an admin user exists for demo on fresh install
+php artisan tinker --execute="
+if (\App\Models\User::count() === 0) {
+    \$company = \App\Models\Company::firstOrCreate(['name' => 'Codevora ERP', 'is_active' => true]);
+    \App\Models\User::create([
+        'company_id' => \$company->id,
+        'name' => 'Admin User',
+        'email' => 'admin@codevora.com',
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'role' => 'Admin',
+        'status' => 'Active',
+    ]);
+}
+" || true
 # Optimize caches for production
 php artisan config:cache
 php artisan route:cache
