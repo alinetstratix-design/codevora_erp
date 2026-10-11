@@ -85,6 +85,7 @@
                     <i class="bi bi-people me-2"></i> Customers
                 </a>
             </li>
+            @if(in_array(auth()->user()?->role, ['Admin', 'Manager']))
             <li>
                 <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
                     <i class="bi bi-box-seam me-2"></i> Products
@@ -95,6 +96,7 @@
                     <i class="bi bi-layers me-2"></i> Master Data
                 </a>
             </li>
+            @endif
             <hr class="text-white-50">
             <li>
                 <a href="{{ route('company.edit') }}" class="nav-link {{ request()->routeIs('company.*') ? 'active' : '' }}">

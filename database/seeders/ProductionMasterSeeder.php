@@ -16,35 +16,38 @@ class ProductionMasterSeeder extends Seeder
 {
     public function run()
     {
-        // 1. Resolve Company
+        // 1. Resolve company. This seeder is an initial load only.
         $company = Company::first();
         if (!$company) {
-            $company = Company::create(['name' => 'SHAH ENTERPRISES', 'is_active' => 1]);
-        } else {
-            $company->update(['name' => 'SHAH ENTERPRISES', 'is_active' => 1]);
+            $company = Company::create(['name' => env('SEED_COMPANY_NAME', 'My Company'), 'is_active' => true]);
         }
-        $companyId = $company->id; // 14
+        $companyId = $company->id;
 
-        // 2. Link & Ensure CompanySetting
-        $setting = CompanySetting::find(10) ?? CompanySetting::where('company_id', $companyId)->first() ?? CompanySetting::first();
-        if (!$setting) {
-            $setting = new CompanySetting();
+        // 2. Never touch a company that already has master data (no deletes, no overwrites).
+        $hasData = Product::withoutGlobalScopes()->where('company_id', $companyId)->exists()
+            || Material::withoutGlobalScopes()->where('company_id', $companyId)->exists();
+        if ($hasData) {
+            if ($this->command) {
+                $this->command->warn('Company already has master data. ProductionMasterSeeder skipped.');
+            }
+            return;
         }
-        $setting->company_id = $companyId;
-        $setting->company_name = 'SHAH ENTERPRISES';
-        $setting->email = 'shahenterprises044@gmail.com';
-        $setting->phone = '+91 9599543500';
-        $setting->website = 'https://www.codevora.com';
-        $setting->address = 'Industrial Area, Phase 2, New Delhi - 110020';
-        $setting->gst_number = '07AABCS1429B1Z1';
-        $setting->gstin = '07AABCS1429B1Z1';
-        $setting->save();
 
-        // 3. Clean and Populate Production Materials for this company
-        Schema::disableForeignKeyConstraints();
-        BomRule::where('company_id', $companyId)->delete();
-        Material::where('company_id', $companyId)->delete();
+        // 3. Company settings are created only when missing; values come from env, never hardcoded.
+        if (!CompanySetting::where('company_id', $companyId)->exists()) {
+            CompanySetting::create([
+                'company_id' => $companyId,
+                'company_name' => env('SEED_COMPANY_NAME', $company->name),
+                'email' => env('SEED_COMPANY_EMAIL'),
+                'phone' => env('SEED_COMPANY_PHONE'),
+                'website' => env('SEED_COMPANY_WEBSITE'),
+                'address' => env('SEED_COMPANY_ADDRESS'),
+                'gst_number' => env('SEED_COMPANY_GSTIN'),
+                'gstin' => env('SEED_COMPANY_GSTIN'),
+            ]);
+        }
 
+        // 4. Populate master data
         $materials = [
             // Profiles
             ['sku' => 'PRF-UPVC-FRM60', 'name' => 'uPVC Outer Frame Profile 60mm', 'category' => 'Profile', 'uom' => 'Mtr', 'cost' => 185.00, 'waste_percent' => 5.0, 'weight_per_mtr' => 1.18],
@@ -188,7 +191,6 @@ SVG;
 </svg>
 SVG;
 
-        Design::where('company_id', $companyId)->delete();
 
         $dSliding2T = Design::create([
             'company_id' => $companyId,
@@ -236,7 +238,6 @@ SVG;
         ]);
 
         // 5. Clean and Populate Real Production Products
-        Product::where('company_id', $companyId)->delete();
 
         $prodList = [
             [

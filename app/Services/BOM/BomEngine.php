@@ -2,23 +2,22 @@
 
 namespace App\Services\BOM;
 
+use App\Models\Material;
 use App\Models\Product;
 use Exception;
 
 class BomEngine
 {
     /**
-     * Calculate BOM for a given product and context (e.g. width, height, qty).
-     * 
-     * Context typically includes:
-     * - width (in mm)
-     * - height (in mm)
-     * - quantity
-     * - other product-specific configurations
+     * Calculate BOM for a given product and context (width, height, quantity, options).
+     *
+     * Returns:
+     *  - bom:          calculated lines (no financial data)
+     *  - explanations: human-readable trace of each evaluated component
+     *  - errors:       configuration problems that make the BOM incomplete (must block saving)
      */
     public function calculate(Product $product, array $context): array
     {
-        // Ensure default context variables
         $rawWidth = (float) ($context['width'] ?? 0);
         $rawHeight = (float) ($context['height'] ?? 0);
         $unit = strtolower(trim($context['unit'] ?? 'mm'));
@@ -32,17 +31,18 @@ class BomEngine
 
         $bomLines = [];
         $explanations = [];
+        $errors = [];
 
         $designId = $context['design_id'] ?? null;
-        
+
         if ($product->relationLoaded('components')) {
-            $components = $product->components->filter(function($comp) use ($designId) {
+            $components = $product->components->filter(function ($comp) use ($designId) {
                 return $comp->design_id == $designId || is_null($comp->design_id);
             })->sortBy('sort_order');
         } else {
             $query = $product->components()->with('material')->orderBy('sort_order');
             if ($designId) {
-                $query->where(function($q) use ($designId) {
+                $query->where(function ($q) use ($designId) {
                     $q->where('design_id', $designId)->orWhereNull('design_id');
                 });
             } else {
@@ -52,93 +52,90 @@ class BomEngine
         }
 
         foreach ($components as $component) {
+            $role = $component->component_role ?: ('rule #' . $component->id);
             $material = $component->material;
-            
-            if (!$material || !$material->is_active) {
-                continue; // Skip inactive or missing materials
+
+            if (!$material) {
+                $errors[] = "Component [{$role}] has no material assigned (it may have been deleted).";
+                continue;
+            }
+
+            if (!$material->is_active) {
+                // An inactive material on a required component would silently drop its cost: treat as an error.
+                $errors[] = "Material [{$material->name}] for [{$role}] is inactive. Activate it or change the BOM.";
+                continue;
             }
 
             $roleLower = strtolower($component->component_role ?? '');
 
-            // Dynamic customization: Handle Mesh selection
+            // Dynamic customization: mesh selection
             if (str_contains($roleLower, 'mesh') || (strtolower($material->category ?? '') === 'mesh')) {
                 if (isset($context['mesh_type'])) {
                     $mType = strtolower(trim($context['mesh_type']));
                     if ($mType === 'no' || $mType === 'no mesh' || $mType === 'none' || $mType === '') {
-                        $explanations[] = "Skipped mesh component [{$component->component_role}] because mesh is disabled.";
+                        $explanations[] = "Skipped mesh component [{$role}] because mesh is disabled.";
                         continue;
                     }
-                    $customMesh = \App\Models\Material::where('company_id', $product->company_id)
-                        ->where('category', 'Mesh')
-                        ->where('is_active', true)
-                        ->where(function($q) use ($mType) {
-                            $q->whereRaw('LOWER(name) LIKE ?', ['%' . $mType . '%'])
-                              ->orWhereRaw('? LIKE CONCAT("%", LOWER(name), "%")', [$mType]);
-                        })->first();
+                    $customMesh = $this->findCompanyMaterial($product, 'Mesh', $mType);
                     if ($customMesh) {
                         $material = $customMesh;
                     }
                 }
             }
 
-            // Dynamic customization: Handle Glass selection
+            // Dynamic customization: glass selection
             if (str_contains($roleLower, 'glass') || (strtolower($material->category ?? '') === 'glass')) {
                 if (!empty($context['glass_type'])) {
                     $gType = strtolower(trim($context['glass_type']));
-                    $customGlass = \App\Models\Material::where('company_id', $product->company_id)
-                        ->where('category', 'Glass')
-                        ->where('is_active', true)
-                        ->where(function($q) use ($gType) {
-                            $q->whereRaw('LOWER(name) LIKE ?', ['%' . $gType . '%'])
-                              ->orWhereRaw('? LIKE CONCAT("%", LOWER(name), "%")', [$gType]);
-                        })->first();
+                    $customGlass = $this->findCompanyMaterial($product, 'Glass', $gType);
                     if ($customGlass) {
                         $material = $customGlass;
                     }
                 }
             }
 
-            // 1. Evaluate Condition
+            // 1. Condition
             $conditionDefinition = $component->condition_definition ?? [];
-            if (!RuleEngine::evaluateCondition($conditionDefinition, $context)) {
-                $explanations[] = "Skipped component [{$component->component_role}] due to condition.";
+            try {
+                if (!RuleEngine::evaluateCondition($conditionDefinition, $context)) {
+                    $explanations[] = "Skipped component [{$role}] due to condition.";
+                    continue;
+                }
+            } catch (Exception $e) {
+                $errors[] = "Condition error for [{$role}]: " . $e->getMessage();
                 continue;
             }
 
-            // 2. Evaluate Rule for base theoretical requirement
-            $ruleDefinition = !empty($component->rule_definition) 
-                ? $component->rule_definition 
+            // 2. Theoretical requirement
+            $ruleDefinition = !empty($component->rule_definition)
+                ? $component->rule_definition
                 : (!empty($component->formula) ? $component->formula : []);
 
             try {
                 $theoreticalQty = RuleEngine::evaluateRule($ruleDefinition, $context);
             } catch (Exception $e) {
-                $explanations[] = "Error evaluating rule for [{$component->component_role}]: " . $e->getMessage();
+                $errors[] = "Rule error for [{$role}]: " . $e->getMessage();
                 continue;
             }
 
-            // 3. Normalize Unit
-            // The rule output might be in mm (like perimeter). The material might be stocked/costed in meters (m).
-            // We need to convert the theoreticalQty from component->unit to material->uom.
+            // 3. Normalize unit (rule output unit -> material stock unit)
             $componentUnit = $component->unit ?: 'mm';
             $materialUnit = $material->uom ?: 'nos';
 
             try {
                 $normalizedQty = UnitConverter::convert($theoreticalQty, $componentUnit, $materialUnit);
             } catch (Exception $e) {
-                $explanations[] = "Unit conversion error for [{$component->component_role}]: " . $e->getMessage();
+                $errors[] = "Unit error for [{$role}]: " . $e->getMessage();
                 continue;
             }
 
-            // 4. Apply Wastage
-            // The prompt says: Theoretical Requirement -> Wastage Rule -> Stock Requirement
+            // 4. Wastage: theoretical -> stock requirement
             $wastePercent = (float) $material->waste_percent;
             $stockRequirement = $normalizedQty * (1 + ($wastePercent / 100));
 
-            // Multiply by item quantity for total requirement for this line
+            // 5. Multiply by item quantity
             $totalRequirement = $stockRequirement * $context['quantity'];
 
-            // 5. Build BOM Line (No Financial Data)
             $bomLines[] = [
                 'component_role' => $component->component_role,
                 'material_id' => $material->id,
@@ -151,20 +148,38 @@ class BomEngine
                 'normalized_qty' => $normalizedQty,
                 'waste_percent' => $wastePercent,
                 'stock_requirement_per_item' => $stockRequirement,
-                'total_qty' => $totalRequirement, // for the full context quantity
-                // Snapshot of variables used for trace/snapshotting
+                'total_qty' => $totalRequirement,
                 'snapshot_context' => [
                     'rule' => $ruleDefinition,
-                    'variables_used' => $context
-                ]
+                    'variables_used' => $context,
+                ],
             ];
 
-            $explanations[] = "Evaluated [{$component->component_role}] ({$material->name}): Rule => {$theoreticalQty} {$componentUnit} -> {$normalizedQty} {$materialUnit} + {$wastePercent}% waste = {$stockRequirement} {$materialUnit} / item.";
+            $explanations[] = "Evaluated [{$role}] ({$material->name}): Rule => {$theoreticalQty} {$componentUnit} -> {$normalizedQty} {$materialUnit} + {$wastePercent}% waste = {$stockRequirement} {$materialUnit} / item.";
         }
 
         return [
             'bom' => $bomLines,
             'explanations' => $explanations,
+            'errors' => $errors,
         ];
+    }
+
+    /**
+     * Find an active material of the product's own company whose name matches the selected option.
+     */
+    private function findCompanyMaterial(Product $product, string $category, string $selected): ?Material
+    {
+        return Material::withoutGlobalScopes()
+            ->where('company_id', $product->company_id)
+            ->where('category', $category)
+            ->where('is_active', true)
+            ->where('name', '<>', '')
+            ->where(function ($q) use ($selected) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . $selected . '%'])
+                  ->orWhereRaw('? LIKE CONCAT(\'%\', LOWER(name), \'%\')', [$selected]);
+            })
+            ->orderBy('id')
+            ->first();
     }
 }

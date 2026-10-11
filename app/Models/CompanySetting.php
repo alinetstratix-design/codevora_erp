@@ -22,17 +22,31 @@ class CompanySetting extends Model
         'bank_details',
         'terms_conditions',
         'installation_prerequisites',
-        'authorized_signature'
+        'authorized_signature',
+        'default_tax_percent',
     ];
 
     protected $casts = [
         'bank_details' => 'array',
         'terms_conditions' => 'array',
         'installation_prerequisites' => 'array',
+        'default_tax_percent' => 'float',
     ];
 
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id');
+    }
+
+    /**
+     * Settings for one company only. Never falls back to another company's row.
+     */
+    public static function forCompany(?int $companyId): ?self
+    {
+        if ($companyId === null) {
+            return null;
+        }
+
+        return static::where('company_id', $companyId)->first();
     }
 }

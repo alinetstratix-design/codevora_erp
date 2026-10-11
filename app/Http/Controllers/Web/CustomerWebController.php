@@ -51,14 +51,14 @@ class CustomerWebController extends Controller
 
     public function store(StoreCustomerRequest $request)
     {
-        $this->customerService->createCustomer($request->validated());
+        $this->customerService->createCustomer($request->validated(), $request->user()->company_id);
 
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
 
     public function storeAjax(StoreCustomerRequest $request)
     {
-        $customer = $this->customerService->createCustomer($request->validated());
+        $customer = $this->customerService->createCustomer($request->validated(), $request->user()->company_id);
         return response()->json([
             'success' => true,
             'customer' => $customer

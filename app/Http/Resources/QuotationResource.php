@@ -58,7 +58,7 @@ class QuotationResource extends JsonResource
             'terms_conditions' => $this->terms_conditions,
             'bank_details' => $this->bank_details,
             'cover_letter_enclosures' => $this->cover_letter_enclosures,
-            'pdf_path' => $this->pdf_path ? asset($this->pdf_path) : null,
+            'pdf_url' => $this->pdf_path ? url('/api/quotations/' . $this->id . '/download') : null,
             
             'items' => QuotationItemResource::collection($this->whenLoaded('items')),
             

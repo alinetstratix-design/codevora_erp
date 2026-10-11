@@ -12,6 +12,14 @@ class DevelopmentSeeder extends Seeder
 {
     public function run()
     {
+        // Demo accounts with known passwords must never exist outside local development.
+        if (!app()->environment('local')) {
+            if ($this->command) {
+                $this->command->warn('DevelopmentSeeder runs only in the local environment.');
+            }
+            return;
+        }
+
         // 1. Seed Users
         $users = [
             [

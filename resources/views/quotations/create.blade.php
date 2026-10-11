@@ -37,7 +37,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-bold text-muted small text-uppercase mb-1">Quote No</label>
-                        <input type="text" name="quote_no" id="quote_no" class="form-control form-control-sm shadow-sm border-0 bg-light text-primary fw-bold" value="{{ 'QT-' . date('Ymd') . '-' . rand(100, 999) }}" readonly>
+                        <input type="text" name="quote_no" id="quote_no" class="form-control form-control-sm shadow-sm border-0 bg-light text-primary fw-bold" value="Auto-generated on save" readonly>
                     </div>
                     <div class="col-md-1">
                         <label class="form-label fw-bold text-muted small text-uppercase mb-1">Date</label>
@@ -118,6 +118,24 @@
                 <div class="card-footer bg-white border-top rounded-bottom-3 p-3 mt-auto shadow-sm position-relative z-index-1">
                     <div id="zero-cost-warning" class="alert alert-warning py-2 px-2 small fw-semibold d-none mb-2 border-warning" role="alert" style="font-size: 0.75rem;">
                         <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Missing material costs detected.
+                    </div>
+                    <div class="row g-1 mb-2" id="charges-panel">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0">Discount %</label>
+                            <input type="number" min="0" max="100" step="0.01" id="charge-discount-percent" class="form-control form-control-sm" value="0" oninput="debouncedPreviewRequest()">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0">GST %</label>
+                            <input type="number" min="0" max="100" step="0.01" id="charge-tax-percent" class="form-control form-control-sm" value="{{ $company->default_tax_percent ?? 18 }}" oninput="debouncedPreviewRequest()">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0">Freight (₹)</label>
+                            <input type="number" min="0" step="0.01" id="charge-freight" class="form-control form-control-sm" value="0" oninput="debouncedPreviewRequest()">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-0">Installation (₹)</label>
+                            <input type="number" min="0" step="0.01" id="charge-installation" class="form-control form-control-sm" value="0" oninput="debouncedPreviewRequest()">
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="text-muted fw-semibold small">Basic Subtotal</span>
@@ -394,7 +412,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         if (contactInfo) {
             const phone = opt.dataset.phone || 'No Phone';
             const email = opt.dataset.email || 'No Email';
-            contactInfo.innerHTML = `<span class="badge bg-light text-dark border me-1"><i class="bi bi-telephone me-1"></i>${phone}</span> <span class="badge bg-light text-dark border"><i class="bi bi-envelope me-1"></i>${email}</span>`;
+            contactInfo.innerHTML = `<span class="badge bg-light text-dark border me-1"><i class="bi bi-telephone me-1"></i>${escapeHtml(phone)}</span> <span class="badge bg-light text-dark border"><i class="bi bi-envelope me-1"></i>${escapeHtml(email)}</span>`;
         }
     }
 
@@ -491,10 +509,10 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
                     <div class="card border border-2 shadow-sm cursor-pointer hover-lift design-card flex-shrink-0" 
                          id="design-card-${d.id}" 
                          style="width: 100px; transition: all 0.2s ease;"
-                         onclick="selectDesign(${d.id}, '${cleanName}')">
-                        <img src="${imgUrl}" class="card-img-top" style="height: 80px; object-fit: contain; padding: 4px;" alt="${d.name}" loading="lazy" decoding="async">
+                         onclick="selectDesign(${d.id}, decodeURIComponent('${encodeURIComponent(d.name).replace(/'/g, '%27')}'))">
+                        <img src="${escapeHtml(imgUrl)}" class="card-img-top" style="height: 80px; object-fit: contain; padding: 4px;" alt="${escapeHtml(d.name)}" loading="lazy" decoding="async">
                         <div class="card-body p-1 text-center bg-white rounded-bottom border-top">
-                            <small class="fw-bold d-block text-truncate text-dark" style="font-size: 0.65rem;" title="${d.name}">${d.name}</small>
+                            <small class="fw-bold d-block text-truncate text-dark" style="font-size: 0.65rem;" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</small>
                         </div>
                     </div>`;
                 });
@@ -616,12 +634,12 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         stagedSizes.forEach(s => {
             const unit = s.unit || 'mm';
             html += `<tr>
-                <td class="fw-semibold text-dark">${s.width}</td>
-                <td class="fw-semibold text-dark">${s.height}</td>
-                <td><span class="badge bg-light text-primary border">${unit}</span></td>
-                <td class="fw-semibold text-dark">${s.qty}</td>
+                <td class="fw-semibold text-dark">${escapeHtml(s.width)}</td>
+                <td class="fw-semibold text-dark">${escapeHtml(s.height)}</td>
+                <td><span class="badge bg-light text-primary border">${escapeHtml(unit)}</span></td>
+                <td class="fw-semibold text-dark">${escapeHtml(s.qty)}</td>
                 <td class="small text-muted">${s.areaSqFt ? (s.areaSqFt * s.qty).toFixed(2) : '-'}</td>
-                <td><button type="button" class="btn btn-sm text-danger py-0 px-1" onclick="removeStagedSize(${s.id})"><i class="bi bi-x"></i></button></td>
+                <td><button type="button" class="btn btn-sm text-danger py-0 px-1" onclick="removeStagedSize(${Number(s.id)})"><i class="bi bi-x"></i></button></td>
             </tr>`;
         });
         tbody.innerHTML = html;
@@ -772,6 +790,24 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         }, 100);
     }
 
+    // Escapes user-controlled text before it is placed into innerHTML
+    function escapeHtml(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Commercial charges entered by the user (discount, GST, freight, installation)
+    function chargePayload() {
+        const num = id => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; };
+        return {
+            discount_percent: num('charge-discount-percent'),
+            tax_percent: num('charge-tax-percent'),
+            transportation: num('charge-freight'),
+            installation: num('charge-installation'),
+        };
+    }
+
     function renderCartUI() {
         const container = document.getElementById('cart-items-container');
         if (cart.length === 0) {
@@ -786,7 +822,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         
         let html = '';
         cart.forEach((item, idx) => {
-            let sizesList = item.sizes.map(s => `<span class="badge bg-light text-dark border me-1 mb-1">${s.width}x${s.height} ${s.unit || 'mm'} [Qty ${s.quantity}]</span>`).join('');
+            let sizesList = item.sizes.map(s => `<span class="badge bg-light text-dark border me-1 mb-1">${escapeHtml(`${s.width}x${s.height} ${s.unit || 'mm'} [Qty ${s.quantity}]`)}</span>`).join('');
             
             // Build Specs String
             let specs = [];
@@ -796,14 +832,14 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
             if(item.mesh_type && item.mesh_type !== 'No') specs.push(item.mesh_type);
             if(item.profile_color) specs.push(item.profile_color);
             if(item.rate_per_sqft) specs.push(`Custom Rate: ₹${item.rate_per_sqft}/sqft`);
-            let specsHtml = specs.length > 0 ? `<div class="small text-muted mb-2"><i class="bi bi-gear-fill me-1"></i> ${specs.join(' | ')}</div>` : '';
+            let specsHtml = specs.length > 0 ? `<div class="small text-muted mb-2"><i class="bi bi-gear-fill me-1"></i> ${specs.map(escapeHtml).join(' | ')}</div>` : '';
 
             html += `
             <div class="cart-item position-relative">
                 <div class="d-flex justify-content-between align-items-start mb-1">
                     <div>
-                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">Item ${idx+1}: ${item.product_name}</h6>
-                        <small class="text-muted" style="font-size: 0.75rem;">${item.design_name}</small>
+                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.9rem;">Item ${idx+1}: ${escapeHtml(item.product_name)}</h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">${escapeHtml(item.design_name)}</small>
                     </div>
                     <div class="cart-item-actions bg-white shadow-sm rounded-pill px-1 py-0 border position-absolute top-0 end-0 mt-2 me-2">
                         <button class="btn btn-sm text-primary py-0 px-1" onclick="editCartItem(${idx})" title="Edit"><i class="bi bi-pencil" style="font-size: 0.75rem;"></i></button>
@@ -841,6 +877,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         previewAbortController = new AbortController();
 
         const payload = {
+            ...chargePayload(),
             project_name: document.getElementById('project_name').value || 'Draft',
             client_name: document.getElementById('client_name').value || 'Draft',
             date: document.getElementById('date').value,
@@ -889,10 +926,15 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
             return res.json();
         })
         .then(data => {
-            if (data.has_zero_cost_materials) {
-                document.getElementById('zero-cost-warning').classList.remove('d-none');
+            const costWarn = document.getElementById('zero-cost-warning');
+            if (data.bom_errors && data.bom_errors.length) {
+                costWarn.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> Costing incomplete: ' + data.bom_errors.map(escapeHtml).join('<br>');
+                costWarn.classList.remove('d-none');
+            } else if (data.has_zero_cost_materials) {
+                costWarn.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Missing material costs detected.';
+                costWarn.classList.remove('d-none');
             } else {
-                document.getElementById('zero-cost-warning').classList.add('d-none');
+                costWarn.classList.add('d-none');
             }
 
             const subtotal = data.quotation_data ? (data.quotation_data.subtotal || 0) : 0;
@@ -928,6 +970,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
 
         const locVal = document.getElementById('project_location') ? document.getElementById('project_location').value : '';
         const payload = {
+            ...chargePayload(),
             customer_id: cust.value,
             project_name: document.getElementById('project_name').value,
             client_name: document.getElementById('client_name').value,
@@ -984,7 +1027,16 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
                 window.location.href = res.url;
                 return;
             }
-            if(!res.ok) throw new Error("Save failed");
+            if(!res.ok) {
+                return res.json().catch(() => null).then(data => {
+                    let errorMsg = data && data.message ? data.message : "Error saving quotation";
+                    if(data && data.errors) {
+                        const errLines = Object.values(data.errors).flat().join('\n');
+                        if(errLines) errorMsg += ':\n' + errLines;
+                    }
+                    throw new Error(errorMsg);
+                });
+            }
             return res.json();
         })
         .then(data => {
@@ -994,7 +1046,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
         })
         .catch(err => {
             console.error("Save error:", err);
-            alert("Error saving quotation");
+            alert(err.message || "Error saving quotation");
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use Illuminate\Validation\Rule;
 
 class ProductController extends CrudController
 {
@@ -12,7 +13,7 @@ class ProductController extends CrudController
     protected function storeRules(): array
     {
         return [
-            'product_code' => 'required|string|unique:products',
+            'product_code' => ['required', 'string', Rule::unique('products', 'product_code')->where('company_id', auth()->user()->company_id)],
             'name' => 'required|string',
             'material' => 'nullable|string',
             'category' => 'nullable|string',
@@ -45,7 +46,7 @@ class ProductController extends CrudController
     protected function updateRules($id): array
     {
         return [
-            'product_code' => 'sometimes|required|string|unique:products,product_code,'.$id,
+            'product_code' => ['sometimes', 'required', 'string', Rule::unique('products', 'product_code')->ignore($id)->where('company_id', auth()->user()->company_id)],
             'name' => 'sometimes|required|string',
             'material' => 'nullable|string',
             'category' => 'nullable|string',
@@ -73,5 +74,11 @@ class ProductController extends CrudController
             'labor_rate_per_sqft' => 'nullable|numeric',
             'profile_calc_formula' => 'nullable|string',
         ];
+    }
+
+    protected function preStore(array $data): array
+    {
+        $data['company_id'] = auth()->user()->company_id;
+        return $data;
     }
 }

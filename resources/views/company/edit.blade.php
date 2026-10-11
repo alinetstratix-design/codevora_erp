@@ -23,6 +23,10 @@
                             <label class="form-label fw-bold">GSTIN / GST Number</label>
                             <input type="text" name="gst_number" class="form-control" value="{{ old('gst_number', $setting->gst_number ?? $setting->gstin ?? '') }}" placeholder="e.g. 09AAAAA0000A1Z5">
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Default GST % for quotations</label>
+                            <input type="number" min="0" max="100" step="0.01" name="default_tax_percent" class="form-control" value="{{ old('default_tax_percent', $setting->default_tax_percent ?? 18) }}">
+                        </div>
                     </div>
 
                     <div class="row mb-3">

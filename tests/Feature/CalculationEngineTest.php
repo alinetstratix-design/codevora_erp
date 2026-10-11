@@ -193,7 +193,7 @@ class CalculationEngineTest extends TestCase
             ]
         ];
 
-        $quotation = $quotationService->saveDraft($data);
+        $quotation = $quotationService->saveDraft($data, $this->company->id);
         $originalGrandTotal = $quotation->grand_total;
 
         // Mutate product price

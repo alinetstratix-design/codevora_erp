@@ -22,11 +22,14 @@ class ProductWebController extends Controller
     {
         $query = Product::query();
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where('name', 'like', "%{$search}%")
+            // Grouped so the company scope (added as AND) always applies to the whole search
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
                   ->orWhere('category', 'like', "%{$search}%")
                   ->orWhere('profile_brand', 'like', "%{$search}%");
+            });
         }
 
         $products = $query->orderBy('id', 'desc')->paginate(10);
@@ -41,7 +44,7 @@ class ProductWebController extends Controller
 
     public function store(StoreProductRequest $request)
     {
-        $this->productService->createProduct($request->validated(), $request->file('image'));
+        $this->productService->createProduct($request->validated(), $request->user()->company_id, $request->file('image'));
 
         return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }

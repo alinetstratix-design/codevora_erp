@@ -47,6 +47,9 @@ class ItemDTO
     public array $exclusions;
     public array $sizes;
 
+    /** @var array<int, array{svg_base64: string, label: string}> One drawing per size (multi-size items only) */
+    public array $sizeDrawings = [];
+
     public string $notes;
 
     public function __construct(array $data = [], DrawingDTO $drawing = null, ProfileDTO $profile = null, GlassDTO $glass = null, HardwareDTO $hardware = null, AccessoryDTO $accessory = null)
@@ -86,6 +89,7 @@ class ItemDTO
 
         $this->notes = $data['notes'] ?? $data['remarks'] ?? '';
         $this->sizes = $data['sizes'] ?? [];
+        $this->sizeDrawings = $data['size_drawings'] ?? [];
 
         $this->drawing = $drawing ?? new DrawingDTO();
         $this->profile = $profile ?? new ProfileDTO($data['profile_details'] ?? []);
@@ -174,6 +178,7 @@ class ItemDTO
             'inclusions' => $this->inclusions,
             'exclusions' => $this->exclusions,
             'sizes' => $this->sizes,
+            'size_drawings' => $this->sizeDrawings,
             'notes' => $this->notes,
         ];
     }

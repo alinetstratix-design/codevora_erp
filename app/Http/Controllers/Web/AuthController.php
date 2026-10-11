@@ -22,7 +22,14 @@ class AuthController extends Controller
 
         $remember = $request->boolean('remember');
 
-        if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password']], $remember)) {
+        // Only active accounts may sign in (users.status column).
+        $attempt = [
+            'email' => $credentials['email'],
+            'password' => $credentials['password'],
+            'status' => 'Active',
+        ];
+
+        if (Auth::attempt($attempt, $remember)) {
             $request->session()->regenerate();
             return redirect()->intended(route('dashboard'));
         }

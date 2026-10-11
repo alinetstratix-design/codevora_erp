@@ -109,6 +109,22 @@
             </td>
         </tr>
         @endif
+        @if(!empty($item->sizeDrawings))
+        <tr>
+            <td colspan="2" style="padding: 4px 5px; border-top: 1px dashed #a6b9d0;">
+                <table width="100%" style="border-collapse: collapse;">
+                    <tr>
+                        @foreach($item->sizeDrawings as $sizeDrawing)
+                            <td style="text-align: center; vertical-align: top; padding: 2px;">
+                                <img src="data:image/svg+xml;base64,{{ $sizeDrawing['svg_base64'] }}" style="max-height: 120px; max-width: 100%;" alt="Size drawing" />
+                                <div style="font-size: 7pt;">{{ $sizeDrawing['label'] }}</div>
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        @endif
         <tr>
             <td colspan="2" class="card-remarks"><strong>Remarks :</strong> {{ $item->notes ?? '' }}</td>
         </tr>

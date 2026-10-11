@@ -53,6 +53,8 @@ class PDFViewRenderingTest extends TestCase
         $pdfPath = $pdfService->generateQuotationPDF($quotation);
 
         $this->assertNotEmpty($pdfPath);
-        $this->assertStringContainsString('storage/quotations/', $pdfPath);
+        // PDFs are stored on the private disk, never under the public 'storage/' prefix
+        $this->assertStringStartsWith('quotation_pdfs/', $pdfPath);
+        $this->assertTrue(\Illuminate\Support\Facades\Storage::disk('local')->exists($pdfPath));
     }
 }

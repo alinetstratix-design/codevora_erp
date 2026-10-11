@@ -22,13 +22,16 @@ use App\Http\Controllers\Web\AuthController;
 // Authentication Routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-Route::get('/', function () {
-    return redirect()->route('dashboard');
-});
+Route::redirect('/', '/dashboard');
+
+// Shared quotation PDF for clients: no login, but only with a valid, unexpired signed link.
+Route::get('/share/quotations/{quotation}/pdf', [QuotationWebController::class, 'sharedPdf'])
+    ->name('quotations.shared')
+    ->middleware('signed');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardWebController::class, 'index'])->name('dashboard');
@@ -36,14 +39,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('customers/ajax', [CustomerWebController::class, 'storeAjax'])->name('customers.storeAjax');
     Route::resource('customers', CustomerWebController::class);
     
-    Route::resource('products', ProductWebController::class);
+    // Product & material master data: Admin / Manager only
+    Route::middleware('role:Admin,Manager')->group(function () {
+        Route::resource('products', ProductWebController::class);
+        Route::resource('materials', \App\Http\Controllers\Web\MaterialWebController::class);
+    });
     Route::get('products/{product}/designs', [\App\Http\Controllers\Api\DesignController::class, 'getByProduct'])->name('products.designs');
 
-    Route::get('/company-settings', [CompanySettingController::class, 'edit'])->name('company.edit');
-    Route::put('/company-settings', [CompanySettingController::class, 'update'])->name('company.update');
-    
-    // Master Data Routes
-    Route::resource('materials', \App\Http\Controllers\Web\MaterialWebController::class);
+    Route::middleware('role:Admin,Manager')->group(function () {
+        Route::get('/company-settings', [CompanySettingController::class, 'edit'])->name('company.edit');
+        Route::put('/company-settings', [CompanySettingController::class, 'update'])->name('company.update');
+    });
 
     // Quotation Management & Validation Workflow Routes
     Route::post('/quotations/calculate', [QuotationWebController::class, 'calculate'])

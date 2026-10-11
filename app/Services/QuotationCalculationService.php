@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Product;
 use App\Models\CompanySetting;
+use App\Models\Product;
 use App\Services\BOM\BomEngine;
 use App\Services\BOM\CostingEngine;
 
@@ -19,12 +19,12 @@ class QuotationCalculationService
     }
 
     /**
-     * Calculate Area in Sq.Ft based on width, height and their measurement unit.
+     * Calculate area in Sq.Ft based on width, height and their measurement unit.
      */
     public function calculateArea($width, $height, $dimensionUnit = 'mm', $areaUnit = 'sqft')
     {
-        $w = (float)$width;
-        $h = (float)$height;
+        $w = (float) $width;
+        $h = (float) $height;
 
         if ($w <= 0 || $h <= 0) {
             return 0.000;
@@ -59,17 +59,17 @@ class QuotationCalculationService
 
     public function calculateSize(array $sizeData, ?Product $product, float $laborRate, float $marginPercent, array $itemData = []): array
     {
-        $w = (float)($sizeData['width'] ?? $sizeData['dimension_w'] ?? $sizeData['w'] ?? 0);
-        $h = (float)($sizeData['height'] ?? $sizeData['dimension_h'] ?? $sizeData['h'] ?? 0);
+        $w = (float) ($sizeData['width'] ?? $sizeData['dimension_w'] ?? $sizeData['w'] ?? 0);
+        $h = (float) ($sizeData['height'] ?? $sizeData['dimension_h'] ?? $sizeData['h'] ?? 0);
         $unit = $sizeData['unit'] ?? 'mm';
-        $qty = (int)($sizeData['quantity'] ?? $sizeData['qty'] ?? 1);
+        $qty = (int) ($sizeData['quantity'] ?? $sizeData['qty'] ?? 1);
         $qty = $qty > 0 ? $qty : 1;
 
         $unitAreaSqFt = $this->calculateArea($w, $h, $unit, 'sqft');
         $totalAreaSqFt = $unitAreaSqFt * $qty;
 
         $bomCost = 0.0;
-        $bomResultFull = ['items' => [], 'material_total' => 0.0];
+        $bomResultFull = ['items' => [], 'material_total' => 0.0, 'has_zero_cost_materials' => false, 'errors' => []];
 
         if ($product) {
             $context = [
@@ -87,17 +87,16 @@ class QuotationCalculationService
             $bomResultRaw = $this->bomEngine->calculate($product, $context);
             $bomResultFull = $this->costingEngine->calculate($bomResultRaw);
 
-            $bomCost = (float)$bomResultFull['material_total']; // This is total BOM for $qty
+            $bomCost = (float) $bomResultFull['material_total'];
 
-            // Fallback calculation using product base_rate if BOM rule total is 0
-            if ($bomCost <= 0 && (float)$product->base_rate > 0) {
-                $bomCost = (float)$product->base_rate * $totalAreaSqFt;
+            // Fallback to product base_rate only when the product has no BOM at all
+            if ($bomCost <= 0 && (float) $product->base_rate > 0) {
+                $bomCost = (float) $product->base_rate * $totalAreaSqFt;
                 $bomResultFull['material_total'] = $bomCost;
                 $bomResultFull['has_zero_cost_materials'] = false;
             }
         } else {
-            // Fallback for missing product
-            $bomCost = (float)($sizeData['material_cost'] ?? 0) * $qty;
+            $bomCost = (float) ($sizeData['material_cost'] ?? 0) * $qty;
         }
 
         $totalLaborCost = $totalAreaSqFt * $laborRate;
@@ -122,20 +121,15 @@ class QuotationCalculationService
     }
 
     /**
-     * Calculate and prepare complete quotation data dynamically using Phase B BOM architecture.
+     * Calculate complete quotation data using the BOM architecture.
+     * Products are always resolved inside the current user's company.
      */
     public function calculateQuotationData(array $validated): array
     {
         $items = $validated['items'] ?? [];
-        $discount = (float)($validated['discount'] ?? $validated['discount_amount'] ?? 0);
-        $transportation = (float)($validated['transportation'] ?? $validated['freight_charges'] ?? 0);
-        $installation = (float)($validated['installation'] ?? $validated['installation_cost'] ?? 0);
-        
-        $companyId = auth()->check() ? auth()->user()->company_id : null;
-        $company = $companyId 
-            ? (CompanySetting::where('company_id', $companyId)->first() ?? CompanySetting::find($companyId) ?? CompanySetting::first()) 
-            : CompanySetting::first();
-        $gstPercent = $company ? (float) ($company->default_tax_percent ?? 18.0) : 18.0;
+
+        $companyId = auth()->user()?->company_id ?? session('company_id');
+        $company = CompanySetting::forCompany($companyId);
 
         $processedItems = [];
         $itemCounter = 1;
@@ -148,31 +142,41 @@ class QuotationCalculationService
         $totalAreaSqFt = 0.0;
         $totalComponents = 0;
         $hasZeroCostMaterials = false;
+        $bomErrors = [];
 
-        // Preload products for BOM
-        $productIds = array_filter(array_column($items, 'product_id'));
-        $designIds = array_filter(array_column($items, 'design_id'));
-        
-        $products = Product::withoutGlobalScopes()->with(['components' => function ($query) use ($designIds) {
-            $query->withoutGlobalScopes();
+        // Preload products for BOM (scoped to the user's company by the model's global scope)
+        $productIds = array_values(array_filter(array_column($items, 'product_id')));
+        $designIds = array_values(array_filter(array_column($items, 'design_id')));
+
+        $products = Product::with(['components' => function ($query) use ($designIds) {
             if (!empty($designIds)) {
-                $query->where(function($q) use ($designIds) {
+                $query->where(function ($q) use ($designIds) {
                     $q->whereIn('design_id', $designIds)->orWhereNull('design_id');
                 });
             } else {
                 $query->whereNull('design_id');
             }
-            $query->with(['material' => function($mq) {
-                $mq->withoutGlobalScopes();
-            }]);
+            $query->with('material');
         }])->whereIn('id', $productIds)->get()->keyBy('id');
 
-        foreach ($items as $index => $itemData) {
+        // Reject products or designs that do not belong to the current company.
+        // Never fall back to client-supplied costs for a product we cannot verify.
+        $unknownProducts = array_diff(array_map('intval', $productIds), array_map('intval', $products->keys()->all()));
+        $validDesignIds = empty($designIds) ? [] : \App\Models\Design::whereIn('id', $designIds)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $unknownDesigns = array_diff(array_map('intval', $designIds), $validDesignIds);
+
+        if (!empty($unknownProducts) || !empty($unknownDesigns)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'items' => ['One or more selected products or designs are not available for your company. Please reselect them.'],
+            ]);
+        }
+
+        foreach ($items as $itemData) {
             $productId = $itemData['product_id'] ?? null;
             $product = $productId ? $products->get($productId) : null;
-            
-            $laborRate = $product ? (float)$product->labor_rate_per_sqft : 0.0;
-            $marginPercent = $product ? (float)$product->profit_margin_percent : 0.0;
+
+            $laborRate = $product ? (float) $product->labor_rate_per_sqft : 0.0;
+            $marginPercent = $product ? (float) $product->profit_margin_percent : 0.0;
 
             $sizesInput = $itemData['sizes'] ?? [];
             if (empty($sizesInput)) {
@@ -187,17 +191,21 @@ class QuotationCalculationService
             $itemTotalAreaSqFt = 0.0;
             $itemTotalQty = 0;
             $itemHasZeroCostMaterials = false;
-            
+
             $mergedBomItems = [];
             $processedSizes = [];
 
             foreach ($sizesInput as $sizeInput) {
                 $sizeResult = $this->calculateSize($sizeInput, $product, $laborRate, $marginPercent, $itemData);
-                
+
                 if ($sizeResult['bom_result']['has_zero_cost_materials'] ?? false) {
                     $itemHasZeroCostMaterials = true;
                 }
-                
+
+                foreach ($sizeResult['bom_result']['errors'] ?? [] as $error) {
+                    $bomErrors[] = $error;
+                }
+
                 $itemBomCost += $sizeResult['bom_cost'];
                 $itemLaborCost += $sizeResult['labor_cost'];
                 $itemCostBasis += $sizeResult['cost_basis'];
@@ -207,9 +215,7 @@ class QuotationCalculationService
                 $itemTotalQty += $sizeResult['quantity'];
 
                 foreach ($sizeResult['bom_result']['items'] as $bomLine) {
-                    $matId = $bomLine['material_id'];
-                    $ruleType = $bomLine['rule_type'];
-                    $key = $matId . '_' . $ruleType;
+                    $key = $bomLine['material_id'] . '_' . $bomLine['rule_type'];
                     if (isset($mergedBomItems[$key])) {
                         $mergedBomItems[$key]['total_qty'] += $bomLine['total_qty'];
                         $mergedBomItems[$key]['total_cost'] += $bomLine['total_cost'];
@@ -218,9 +224,8 @@ class QuotationCalculationService
                     }
                 }
 
-                $sizeId = $sizeInput['id'] ?? null;
                 $processedSizes[] = [
-                    'id' => $sizeId,
+                    'id' => $sizeInput['id'] ?? null,
                     'width' => $sizeResult['width'],
                     'height' => $sizeResult['height'],
                     'unit' => $sizeResult['unit'],
@@ -233,11 +238,11 @@ class QuotationCalculationService
             $mergedBomResult = [
                 'items' => array_values($mergedBomItems),
                 'material_total' => $itemBomCost,
-                'has_zero_cost_materials' => $itemHasZeroCostMaterials ?? false
+                'has_zero_cost_materials' => $itemHasZeroCostMaterials,
             ];
 
-            $customRate = (float)($itemData['rate_per_sqft'] ?? $itemData['value_per_sqft'] ?? $itemData['custom_rate'] ?? 0);
-            $customUnitPrice = (float)($itemData['unit_price'] ?? 0);
+            $customRate = (float) ($itemData['rate_per_sqft'] ?? $itemData['value_per_sqft'] ?? $itemData['custom_rate'] ?? 0);
+            $customUnitPrice = (float) ($itemData['unit_price'] ?? 0);
 
             if ($customRate > 0) {
                 $itemLineTotal = round($customRate * $itemTotalAreaSqFt, 2);
@@ -252,7 +257,9 @@ class QuotationCalculationService
                 $valuePerSqFt = $itemTotalAreaSqFt > 0 ? $itemLineTotal / $itemTotalAreaSqFt : 0.00;
             }
 
-            // Global accumulators
+            // Margin always reconciles with the final line total (custom rate may override the computed price)
+            $itemMarginAmount = $itemLineTotal - $itemCostBasis;
+
             $globalBomCostTotal += $itemBomCost;
             $globalAdditionalCostTotal += $itemLaborCost;
             $globalCostBasisTotal += $itemCostBasis;
@@ -260,19 +267,19 @@ class QuotationCalculationService
             $globalLineTotal += $itemLineTotal;
             $totalAreaSqFt += $itemTotalAreaSqFt;
             $totalComponents += $itemTotalQty;
-            
-            if (($mergedBomResult['has_zero_cost_materials'] ?? false) === true) {
+
+            if ($itemHasZeroCostMaterials) {
                 $hasZeroCostMaterials = true;
             }
 
             $code = $itemData['item_code'] ?? $itemData['code'] ?? ('W' . $itemCounter);
             $prodName = !empty($itemData['product_name']) ? $itemData['product_name'] : ($product ? $product->name : ('Window ' . $code));
-            $profileSystem = !empty($itemData['profile_system']) 
-                ? $itemData['profile_system'] 
-                : ($product ? ($product->profile_series ?? $product->series ?? $product->category ?? 'Casement Series') : 'Casement Series');
-            
+            $profileSystem = !empty($itemData['profile_system'])
+                ? $itemData['profile_system']
+                : ($product ? ($product->profile_series ?? $product->category ?? '') : '');
+
             $profileBrand = !empty($itemData['profile_brand']) ? $itemData['profile_brand'] : ($product ? ($product->profile_brand ?? '') : '');
-            $profileSeries = !empty($itemData['profile_series']) ? $itemData['profile_series'] : ($product ? ($product->profile_series ?? $product->series ?? '') : '');
+            $profileSeries = !empty($itemData['profile_series']) ? $itemData['profile_series'] : ($product ? ($product->profile_series ?? '') : '');
             $openingType = !empty($itemData['opening_type']) ? $itemData['opening_type'] : ($product ? ($product->opening_type ?? '') : '');
             $glassType = !empty($itemData['glass_type']) ? $itemData['glass_type'] : ($product ? ($product->glass_type ?? '') : '');
             $glassThickness = !empty($itemData['glass_thickness']) ? $itemData['glass_thickness'] : ($product ? ($product->glass_thickness ?? '') : '');
@@ -280,11 +287,11 @@ class QuotationCalculationService
             $meshType = (!empty($itemData['mesh_type']) && $itemData['mesh_type'] !== 'No') ? $itemData['mesh_type'] : ($product ? ($product->mesh_type ?? 'No') : 'No');
 
             $profileDetails = !empty($itemData['profile_details']) ? $itemData['profile_details'] : ($product && is_array($product->profile_details) ? $product->profile_details : []);
-            if (isset($itemData['profile_color']) && !empty($itemData['profile_color'])) {
+            if (!empty($itemData['profile_color'])) {
                 $profileDetails['Profile Color'] = $itemData['profile_color'];
             }
-            $colorVal = $itemData['color'] ?? $itemData['profile_color'] ?? ($profileDetails['Profile Color'] ?? 'WHITE');
-            
+            $colorVal = $itemData['color'] ?? $itemData['profile_color'] ?? ($profileDetails['Profile Color'] ?? '');
+
             $accessoriesDetails = !empty($itemData['accessories_details']) ? $itemData['accessories_details'] : ($product && is_array($product->accessories_details) ? $product->accessories_details : []);
             $firstSize = $processedSizes[0] ?? ['width' => 0, 'height' => 0, 'unit' => 'mm'];
 
@@ -306,8 +313,8 @@ class QuotationCalculationService
                 'mesh_type' => $meshType,
                 'color' => $colorVal,
                 'profile_color' => $colorVal,
-                'handle_type' => $itemData['handle_type'] ?? 'C-Type Handle',
-                'hardware_color' => $itemData['hardware_color'] ?? 'WHITE',
+                'handle_type' => $itemData['handle_type'] ?? '',
+                'hardware_color' => $itemData['hardware_color'] ?? '',
                 'width' => $firstSize['width'],
                 'height' => $firstSize['height'],
                 'unit' => $firstSize['unit'],
@@ -335,25 +342,44 @@ class QuotationCalculationService
             $itemCounter++;
         }
 
-        $subtotal = $globalLineTotal;
+        // ----- Commercial totals -----
+        $subtotal = round($globalLineTotal, 2);
+
+        // Discount: percent of subtotal takes priority over a flat amount, and never exceeds the subtotal
+        $discountPercent = (float) ($validated['discount_percent'] ?? 0);
+        if ($discountPercent > 0) {
+            $discount = round($subtotal * min($discountPercent, 100) / 100, 2);
+        } else {
+            $discount = min((float) ($validated['discount'] ?? 0), $subtotal);
+        }
+        $discount = round(max(0, $discount), 2);
+
+        $transportation = (float) ($validated['transportation'] ?? $validated['freight_charges_rate'] ?? $validated['freight_charges'] ?? 0);
+        $installation = (float) ($validated['installation'] ?? $validated['installation_cost_rate'] ?? $validated['installation_cost'] ?? 0);
+
+        $gstPercent = isset($validated['tax_percent']) && is_numeric($validated['tax_percent'])
+            ? (float) $validated['tax_percent']
+            : (float) ($company->default_tax_percent ?? 18);
+
         $taxableAmount = max(0, $subtotal - $discount + $transportation + $installation);
-        $taxAmount = $taxableAmount * ($gstPercent / 100);
-        $grandTotal = $taxableAmount + $taxAmount;
+        $taxAmount = round($taxableAmount * ($gstPercent / 100), 2);
+        $grandTotal = round($taxableAmount + $taxAmount, 2);
 
         $totalAreaRounded = round($totalAreaSqFt, 2);
         $avgPriceExGst = $totalAreaRounded > 0 ? round($subtotal / $totalAreaRounded, 2) : 0.00;
         $avgPriceIncGst = $totalAreaRounded > 0 ? round($grandTotal / $totalAreaRounded, 2) : 0.00;
 
-        $quoteNo = $validated['quote_no'] ?? $validated['quotation_number'] ?? ('QT-' . date('Ymd') . '-' . substr(uniqid(), -4));
+        $quoteNo = $validated['quote_no'] ?? $validated['quotation_number'] ?? ('QT-' . now()->format('Ymd') . '-' . substr(uniqid(), -4));
+        $today = now()->toDateString();
 
         return [
             'quotation_data' => [
                 'quotation_number' => $quoteNo,
-                'quotation_date' => $validated['date'] ?? $validated['quotation_date'] ?? date('Y-m-d'),
-                'valid_until' => $validated['valid_till'] ?? $validated['valid_until'] ?? date('Y-m-d', strtotime('+30 days')),
+                'quotation_date' => $validated['date'] ?? $validated['quotation_date'] ?? $today,
+                'valid_until' => $validated['valid_till'] ?? $validated['valid_until'] ?? now()->addDays(30)->toDateString(),
                 'customer_id' => $validated['customer_id'] ?? null,
                 'company_setting_id' => $company ? $company->id : null,
-                'company_id' => auth()->user() ? auth()->user()->company_id : ($company ? $company->company_id : null),
+                'company_id' => $companyId,
                 'client_name' => $validated['client_name'] ?? null,
                 'project_name' => $validated['project_name'] ?? null,
                 'project_location' => $validated['project_location'] ?? $validated['address'] ?? null,
@@ -366,19 +392,19 @@ class QuotationCalculationService
                 'additional_cost_total' => round($globalAdditionalCostTotal, 2),
                 'cost_basis_total' => round($globalCostBasisTotal, 2),
                 'margin_total' => round($globalMarginTotal, 2),
-                'basic_value' => round($subtotal, 2),
-                'subtotal' => round($subtotal, 2),
-                'discount' => round($discount, 2),
-                'discount_percent' => $validated['discount_percent'] ?? 0,
+                'basic_value' => $subtotal,
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'discount_percent' => round($discountPercent, 2),
                 'transportation' => round($transportation, 2),
                 'installation' => round($installation, 2),
                 'taxable_amount' => round($taxableAmount, 2),
                 'tax_percent' => $gstPercent,
-                'tax_amount' => round($taxAmount, 2),
-                'gst' => round($taxAmount, 2),
+                'tax_amount' => $taxAmount,
+                'gst' => $taxAmount,
                 'gst_percent' => $gstPercent,
-                'total_project_cost' => round($subtotal, 2),
-                'grand_total' => round($grandTotal, 2),
+                'total_project_cost' => $subtotal,
+                'grand_total' => $grandTotal,
                 'amount_in_words' => $this->amountInWords($grandTotal),
                 'avg_price_sqft_ex_gst' => $avgPriceExGst,
                 'avg_price_sqft_inc_gst' => $avgPriceIncGst,
@@ -387,51 +413,75 @@ class QuotationCalculationService
                 'bank_details' => $validated['bank_details'] ?? ($company->bank_details ?? null),
             ],
             'items' => $processedItems,
-            'has_zero_cost_materials' => $hasZeroCostMaterials
+            'has_zero_cost_materials' => $hasZeroCostMaterials,
+            'bom_errors' => array_values(array_unique($bomErrors)),
         ];
     }
-    /**
-     * Convert numeric amount to words (Indian Rupees)
-     */
-    public function amountInWords(float $number)
-    {
-        $no = floor($number);
-        $point = round($number - $no, 2) * 100;
-        $digits_1 = strlen($no);
-        $i = 0;
-        $str = array();
-        $words = array(
-            '0' => '', '1' => 'One', '2' => 'Two',
-            '3' => 'Three', '4' => 'Four', '5' => 'Five', '6' => 'Six',
-            '7' => 'Seven', '8' => 'Eight', '9' => 'Nine',
-            '10' => 'Ten', '11' => 'Eleven', '12' => 'Twelve',
-            '13' => 'Thirteen', '14' => 'Fourteen',
-            '15' => 'Fifteen', '16' => 'Sixteen', '17' => 'Seventeen',
-            '18' => 'Eighteen', '19' => 'Nineteen', '20' => 'Twenty',
-            '30' => 'Thirty', '40' => 'Forty', '50' => 'Fifty',
-            '60' => 'Sixty', '70' => 'Seventy',
-            '80' => 'Eighty', '90' => 'Ninety'
-        );
-        $digits = array('', 'Hundred', 'Thousand', 'Lakh', 'Crore');
-        while ($i < $digits_1) {
-            $divider = ($i == 2) ? 10 : 100;
-            $number = floor($no % $divider);
-            $no = floor($no / $divider);
-            $i += ($divider == 10) ? 1 : 2;
-            if ($number) {
-                $counter = count($str);
-                $hundred = ($counter == 1 && $str[0]) ? ' and ' : null;
-                $plural = ($counter && $number > 9) ? 's' : null;
-                $str[] = ($number < 21) ? $words[$number] . " " . $digits[$counter] . $plural . " " . $hundred
-                    : $words[floor($number / 10) * 10] . " " . $words[$number % 10] . " " . $digits[$counter] . $plural . " " . $hundred;
-            } else {
-                $str[] = null;
-            }
-        }
-        $str = array_reverse($str);
-        $result = trim(implode('', $str));
-        $points = ($point > 0) ? " and " . ($words[floor($point / 10) * 10] ?? '') . " " . ($words[$point % 10] ?? '') . " Paise" : '';
 
-        return ($result ? $result : 'Zero') . " Rupees " . $points . " Only";
+    /**
+     * Convert an amount to Indian-English words, e.g. 123456.5 =>
+     * "One Lakh Twenty Three Thousand Four Hundred and Fifty Six Rupees and Fifty Paise Only".
+     */
+    public function amountInWords(float $number): string
+    {
+        $total = (int) round(abs($number) * 100);
+        $rupees = intdiv($total, 100);
+        $paise = $total % 100;
+
+        $result = ($rupees === 0 ? 'Zero' : self::indianWords($rupees))
+            . ($rupees === 1 ? ' Rupee' : ' Rupees');
+
+        if ($paise > 0) {
+            $result .= ' and ' . self::twoDigitWords($paise) . ' Paise';
+        }
+
+        return $result . ' Only';
+    }
+
+    private static function indianWords(int $n): string
+    {
+        $crore = intdiv($n, 10000000);
+        $n %= 10000000;
+        $lakh = intdiv($n, 100000);
+        $n %= 100000;
+        $thousand = intdiv($n, 1000);
+        $n %= 1000;
+        $hundred = intdiv($n, 100);
+        $n %= 100;
+
+        $parts = [];
+
+        if ($crore > 0) {
+            $parts[] = self::indianWords($crore) . ' Crore';
+        }
+        if ($lakh > 0) {
+            $parts[] = self::twoDigitWords($lakh) . ' Lakh';
+        }
+        if ($thousand > 0) {
+            $parts[] = self::twoDigitWords($thousand) . ' Thousand';
+        }
+        if ($hundred > 0) {
+            $parts[] = self::twoDigitWords($hundred) . ' Hundred';
+        }
+        if ($n > 0) {
+            $tail = self::twoDigitWords($n);
+            $parts[] = empty($parts) ? $tail : 'and ' . $tail;
+        }
+
+        return implode(' ', $parts);
+    }
+
+    private static function twoDigitWords(int $n): string
+    {
+        $ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+            'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        if ($n < 20) {
+            return $ones[$n];
+        }
+
+        $tail = $n % 10;
+        return $tens[intdiv($n, 10)] . ($tail > 0 ? ' ' . $ones[$tail] : '');
     }
 }

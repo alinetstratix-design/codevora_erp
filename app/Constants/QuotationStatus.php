@@ -6,6 +6,7 @@ class QuotationStatus
 {
     const DRAFT = 'Draft';
     const SENT = 'Sent';
+    const APPROVED = 'Approved';
     const ACCEPTED = 'Accepted';
     const REJECTED = 'Rejected';
 
@@ -14,6 +15,7 @@ class QuotationStatus
         return [
             self::DRAFT,
             self::SENT,
+            self::APPROVED,
             self::ACCEPTED,
             self::REJECTED,
         ];

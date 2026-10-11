@@ -25,9 +25,9 @@ class QuotationValidationService
     public function validate(Quotation $quotation): ValidationResultDTO
     {
         if ($quotation->exists) {
-            $quotation->load(['items.sizes', 'customer', 'companySetting']);
+            $quotation->load(['items.sizes', 'items.boms', 'customer', 'companySetting']);
         }
-        $company = $quotation->companySetting ?? CompanySetting::first() ?? new CompanySetting();
+        $company = $quotation->companySetting ?? CompanySetting::forCompany($quotation->company_id) ?? new CompanySetting();
         $reportDto = $this->reportBuilder->build($quotation);
 
         $rules = [];
@@ -55,8 +55,8 @@ class QuotationValidationService
 
         $custEmail = $quotation->customer?->email;
         $rules[] = new ValidationItemDTO(
-            'cust_email', 'Customer Email Address', 'Customer Information',
-            !empty($custEmail) || !empty($custPhone), 'Customer email is missing'
+            'cust_email', 'Customer Email or Contact Number', 'Customer Information',
+            !empty($custEmail) || !empty($custPhone), 'Customer email or contact number is missing'
         );
 
         $rules[] = new ValidationItemDTO(
@@ -150,6 +150,21 @@ class QuotationValidationService
         $rules[] = new ValidationItemDTO(
             'calc_avg_rate', 'Average Rate per Sq.Ft. Generated', 'Commercial Calculations',
             !empty($reportDto->summary->formattedAvgPriceSqftIncGst), 'Average Sq.Ft. rate calculation missing'
+        );
+
+        // Every BOM line must carry a material cost; otherwise the price is understated
+        $costingComplete = $hasItems;
+        if ($hasItems) {
+            foreach ($quotation->items as $item) {
+                if ($item->boms->contains(fn ($bom) => (float) $bom->unit_cost <= 0) || (float) $item->line_total <= 0) {
+                    $costingComplete = false;
+                    break;
+                }
+            }
+        }
+        $rules[] = new ValidationItemDTO(
+            'calc_costing_complete', 'Costing Complete (all materials priced)', 'Commercial Calculations',
+            $costingComplete, 'One or more materials have no cost or the item total is zero'
         );
 
         // -------------------------------------------------------------

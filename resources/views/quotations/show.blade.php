@@ -37,9 +37,25 @@
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{{ route('quotations.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+            @if($quotation->status !== \App\Constants\QuotationStatus::APPROVED)
             <a href="{{ route('quotations.edit', $quotation->id) }}" class="btn btn-warning text-dark btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-pencil"></i> Edit Quotation</a>
+            @endif
             <a href="{{ route('quotations.previewPdf', $quotation->id) }}" target="_blank" class="btn btn-info text-white btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-eye"></i> Preview PDF</a>
             <a href="{{ route('quotations.downloadPdf', $quotation->id) }}" class="btn btn-danger btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-file-pdf"></i> Download PDF</a>
+            <a href="{{ $shareLinks['whatsapp'] }}" target="_blank" rel="noopener" class="btn btn-success btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+            <a href="{{ $shareLinks['mailto'] }}" class="btn btn-outline-primary btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-envelope"></i> Email</a>
+            <button type="button" class="btn btn-outline-dark btn-sm px-3 fw-bold shadow-sm" onclick="copyShareLink()"><i class="bi bi-link-45deg"></i> Copy Client Link</button>
+            <input type="hidden" id="share-link" value="{{ $shareLinks['link'] }}">
+            <script>
+                function copyShareLink() {
+                    var value = document.getElementById('share-link').value;
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(value).then(function () { alert('Client link copied. It works for 30 days without login.'); });
+                    } else {
+                        window.prompt('Copy this client link (valid for 30 days):', value);
+                    }
+                }
+            </script>
             <a href="{{ route('quotations.showBom', $quotation->id) }}" class="btn btn-success btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-list-check"></i> Factory BOM</a>
             
             @if($validationResult->canApprove)

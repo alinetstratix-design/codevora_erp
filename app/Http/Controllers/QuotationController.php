@@ -28,8 +28,8 @@ class QuotationController extends Controller
     public function store(QuotationRequest $request)
     {
         $validated = $request->validated();
-        
-        $quotation = $this->quotationService->saveDraft($validated);
+
+        $quotation = $this->quotationService->saveDraft($validated, $request->user()->company_id);
 
         return response()->json(new \App\Http\Resources\QuotationResource($quotation), 201);
     }
@@ -106,7 +106,7 @@ class QuotationController extends Controller
                 'file_name' => basename($filePath),
                 'url' => $url,
                 'whatsapp_share_url' => 'https://api.whatsapp.com/send?text=' . urlencode('Hello, please find your quotation here: ' . $url),
-                'email_share_url' => 'mailto:?subject=Quotation%20' . urlencode($quotation->quote_no) . '&body=' . urlencode('Hello, Please find your quotation attached via link: ' . $url)
+                'email_share_url' => 'mailto:?subject=Quotation%20' . urlencode($quotation->quotation_number) . '&body=' . urlencode('Hello, Please find your quotation attached via link: ' . $url)
             ]);
         } catch (\Exception $e) {
             return response()->json([

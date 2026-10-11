@@ -3,47 +3,94 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
-class UserController extends CrudController
+/**
+ * Admin-only user management, strictly limited to the admin's own company.
+ */
+class UserController extends Controller
 {
-    protected $modelClass = User::class;
+    public const ROLES = ['Admin', 'Manager', 'Staff'];
+    public const STATUSES = ['Active', 'Inactive'];
 
-    protected function storeRules(): array
+    protected function companyUsers(Request $request)
     {
-        return [
+        return User::query()->where('company_id', $request->user()->company_id);
+    }
+
+    public function index(Request $request)
+    {
+        return response()->json($this->companyUsers($request)->get(['id', 'name', 'email', 'role', 'status', 'company_id']));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => 'nullable|string',
-            'status' => 'nullable|string'
-        ];
+            'role' => ['required', Rule::in(self::ROLES)],
+            'status' => ['nullable', Rule::in(self::STATUSES)],
+        ]);
+
+        $user = User::create([
+            'company_id' => $request->user()->company_id,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'role' => $data['role'],
+            'status' => $data['status'] ?? 'Active',
+        ]);
+
+        return response()->json($user->only(['id', 'name', 'email', 'role', 'status']), 201);
     }
 
-    protected function updateRules($id): array
+    public function show(Request $request, $id)
     {
-        return [
+        $user = $this->companyUsers($request)->findOrFail($id);
+        return response()->json($user->only(['id', 'name', 'email', 'role', 'status']));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = $this->companyUsers($request)->findOrFail($id);
+
+        $data = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255|unique:users,email,'.$id,
+            'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => 'nullable|string',
-            'status' => 'nullable|string'
-        ];
-    }
+            'role' => ['sometimes', 'required', Rule::in(self::ROLES)],
+            'status' => ['sometimes', 'required', Rule::in(self::STATUSES)],
+        ]);
 
-    protected function preStore(array $data): array
-    {
-        $data['password'] = Hash::make($data['password']);
-        return $data;
-    }
-
-    protected function preUpdate(array $data, $id): array
-    {
-        if (isset($data['password']) && !empty($data['password'])) {
+        if (!empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);
         }
-        return $data;
+
+        // An admin must not be able to demote or deactivate themselves (lock-out).
+        if ($user->id === $request->user()->id && (($data['role'] ?? 'Admin') !== 'Admin' || ($data['status'] ?? 'Active') !== 'Active')) {
+            return response()->json(['message' => 'You cannot remove your own admin access.'], 422);
+        }
+
+        $user->update($data);
+
+        return response()->json($user->only(['id', 'name', 'email', 'role', 'status']));
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $user = $this->companyUsers($request)->findOrFail($id);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'You cannot delete your own account.'], 422);
+        }
+
+        $user->delete();
+
+        return response()->json(null, 204);
     }
 }

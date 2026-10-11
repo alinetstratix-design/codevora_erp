@@ -84,7 +84,7 @@ class BomSnapshotSecurityTest extends TestCase
             ]
         ];
 
-        $quotation = $this->service->saveDraft($payload);
+        $quotation = $this->service->saveDraft($payload, $company->id);
         $originalGrandTotal = $quotation->grand_total;
 
         $this->assertGreaterThan(0, $originalGrandTotal);

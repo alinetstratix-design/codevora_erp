@@ -39,12 +39,12 @@ fi
 # Run database migrations
 php artisan migrate --force
 
-# Seed master records, lookups, and default admin user
-php artisan db:seed --force || true
+# Seeding is intentionally NOT run on every start (it used to reset admin passwords).
+# Create the first admin with: php artisan users:create-admin
 # Optimize caches for production
-php artisan config:cache || true
-php artisan route:cache || true
-php artisan view:cache || true
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
 # Ensure permissions after artisan commands
 chown -R www-data:www-data /var/www/database /var/www/storage /var/www/bootstrap/cache

@@ -41,6 +41,7 @@ class CostingEngine
             'items' => $costedItems,
             'material_total' => $materialTotal,
             'has_zero_cost_materials' => $hasZeroCostMaterials,
+            'errors' => $bomResult['errors'] ?? [],
         ];
     }
 }

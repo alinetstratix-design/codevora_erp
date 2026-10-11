@@ -8,17 +8,21 @@ use Illuminate\Http\Request;
 class CheckRole
 {
     /**
-     * Handle an incoming request.
+     * Allow the request only when the authenticated user has one of the given roles.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
+     * @param  \Closure  $next
      * @param  string  ...$roles
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
     public function handle(Request $request, Closure $next, ...$roles)
     {
-        if (!$request->user() || !in_array($request->user()->role, $roles)) {
-            return response()->json(['message' => 'Unauthorized. You do not have the required role.'], 403);
+        $user = $request->user();
+
+        if (!$user || !in_array($user->role, $roles, true)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthorized. You do not have the required role.'], 403);
+            }
+            abort(403, 'You do not have permission to access this page.');
         }
 
         return $next($request);

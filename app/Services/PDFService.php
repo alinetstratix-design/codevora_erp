@@ -9,6 +9,9 @@ use App\Models\Quotation;
 
 class PDFService
 {
+    private const DISK = 'local';
+    private const DIRECTORY = 'quotation_pdfs';
+
     protected QuotationReportBuilder $reportBuilder;
 
     public function __construct(QuotationReportBuilder $reportBuilder)
@@ -30,26 +33,23 @@ class PDFService
             $pdf = Pdf::loadView('pdf.quotation', [
                 'report' => $reportDto,
                 'reportData' => $reportData,
-                'company' => $quotation->companySetting 
-                    ?? \App\Models\CompanySetting::where('company_id', $quotation->company_id)->first() 
-                    ?? \App\Models\CompanySetting::find($quotation->company_id) 
-                    ?? \App\Models\CompanySetting::first()
+                'company' => $quotation->companySetting ?? \App\Models\CompanySetting::forCompany($quotation->company_id)
             ])
             ->setPaper('a4', 'portrait')
-            ->setOption('isPhpEnabled', true)
-            ->setOption('isRemoteEnabled', true)
+            ->setOption('isPhpEnabled', false)
+            ->setOption('isRemoteEnabled', false)
             ->setOption('isHtml5ParserEnabled', true);
 
             // Define a clean relative filename
-            $cleanName = preg_replace('/[^A-Za-z0-9\-]/', '_', $quotation->quotation_number ?? $quotation->quote_no ?? 'QT-' . $quotation->id);
-            $fileName = 'quotations/' . $cleanName . '_' . time() . '.pdf';
-            
-            // Save PDF to public storage disk
-            Storage::disk('public')->put($fileName, $pdf->output());
+            $cleanName = preg_replace('/[^A-Za-z0-9\-]/', '_', $quotation->quotation_number ?? 'QT-' . $quotation->id);
+            $fileName = self::DIRECTORY . '/' . $cleanName . '_' . \Illuminate\Support\Str::random(10) . '.pdf';
+
+            // Stored on the PRIVATE disk (storage/app), never publicly reachable: quotations hold bank and client data.
+            Storage::disk(self::DISK)->put($fileName, $pdf->output());
 
             Log::info("PDF successfully generated for Quotation ID: {$quotation->id} at disk path: {$fileName}");
 
-            return 'storage/' . $fileName;
+            return $fileName;
         } catch (\Throwable $e) {
             Log::error("Failed to generate PDF for Quotation ID: {$quotation->id} - Error: " . $e->getMessage(), [
                 'exception' => $e
@@ -63,14 +63,17 @@ class PDFService
      */
     public function getPhysicalPath(Quotation $quotation): string
     {
-        $relativePath = !empty($quotation->pdf_path) ? str_replace('storage/', '', $quotation->pdf_path) : '';
-        if (empty($relativePath) || !Storage::disk('public')->exists($relativePath)) {
-            $newPath = $this->generateQuotationPDF($quotation);
-            $quotation->update(['pdf_path' => $newPath]);
-            $relativePath = str_replace('storage/', '', $newPath);
+        // Legacy rows point to 'storage/quotations/...' on the public disk; those are regenerated
+        // on the private disk so the old public copies are no longer the source of truth.
+        $relativePath = (string) $quotation->pdf_path;
+        $isPrivate = str_starts_with($relativePath, self::DIRECTORY . '/');
+
+        if (!$isPrivate || !Storage::disk(self::DISK)->exists($relativePath)) {
+            $relativePath = $this->generateQuotationPDF($quotation);
+            $quotation->update(['pdf_path' => $relativePath]);
         }
 
-        return Storage::disk('public')->path($relativePath);
+        return Storage::disk(self::DISK)->path($relativePath);
     }
 
     /**

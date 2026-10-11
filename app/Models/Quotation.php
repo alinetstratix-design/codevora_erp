@@ -73,11 +73,11 @@ class Quotation extends Model
         static::addGlobalScope(new \App\Scopes\CompanyScope);
 
         static::saved(function ($quotation) {
-            \Illuminate\Support\Facades\Cache::forget('dashboard.stats');
+            \Illuminate\Support\Facades\Cache::forget('dashboard.stats.' . $quotation->company_id);
         });
 
         static::deleted(function ($quotation) {
-            \Illuminate\Support\Facades\Cache::forget('dashboard.stats');
+            \Illuminate\Support\Facades\Cache::forget('dashboard.stats.' . $quotation->company_id);
         });
     }
 

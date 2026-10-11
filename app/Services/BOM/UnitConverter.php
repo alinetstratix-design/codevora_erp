@@ -6,13 +6,22 @@ use InvalidArgumentException;
 
 class UnitConverter
 {
+    /** Unit families. Conversion is only allowed inside one family. */
+    private const DIMENSIONS = [
+        'mm' => 'length', 'cm' => 'length', 'm' => 'length', 'mtr' => 'length',
+        'inch' => 'length', 'in' => 'length', 'ft' => 'length', 'feet' => 'length',
+        'sqmm' => 'area', 'sqcm' => 'area', 'sqm' => 'area', 'sqmtr' => 'area', 'sqft' => 'area',
+        'g' => 'mass', 'kg' => 'mass',
+        'pcs' => 'count', 'nos' => 'count', 'piece' => 'count',
+    ];
+
     /**
-     * Convert from one unit to another.
-     * We assume mm for lengths and sqm for areas by default, but this can convert anything we define.
+     * Convert from one unit to another within the same unit family.
+     * Converting between families (for example mm to pcs) is rejected.
      */
     public static function convert(float $value, string $from, string $to): float
     {
-        if (empty($from) || empty($to)) {
+        if ($from === '' || $to === '') {
             return $value;
         }
 
@@ -23,9 +32,16 @@ class UnitConverter
             return $value;
         }
 
-        // Base unit for length is 'mm'. Base unit for area is 'sqmm'.
-        // First convert to base unit, then to target unit.
-        
+        if (!isset(self::DIMENSIONS[$from])) {
+            throw new InvalidArgumentException("Unknown unit for conversion: {$from}");
+        }
+        if (!isset(self::DIMENSIONS[$to])) {
+            throw new InvalidArgumentException("Unknown unit for conversion: {$to}");
+        }
+        if (self::DIMENSIONS[$from] !== self::DIMENSIONS[$to]) {
+            throw new InvalidArgumentException("Cannot convert {$from} to {$to}: different unit types (" . self::DIMENSIONS[$from] . " vs " . self::DIMENSIONS[$to] . ").");
+        }
+
         $baseValue = self::toBase($value, $from);
         return self::fromBase($baseValue, $to);
     }
@@ -46,41 +62,37 @@ class UnitConverter
             'sqm', 'sqmtr' => $value * 1000000,
             'sqft' => $value * 92903.04,
 
-            // Weight (base: kg)
-            'g' => $value / 1000,
-            'kg' => $value,
+            // Mass (base: g)
+            'g' => $value,
+            'kg' => $value * 1000,
 
-            // Quantities
+            // Count (base: pcs)
             'pcs', 'nos', 'piece' => $value,
-            
-            default => throw new InvalidArgumentException("Unknown unit for conversion: {$from}")
+
+            default => throw new InvalidArgumentException("Unknown unit for conversion: {$from}"),
         };
     }
 
     private static function fromBase(float $baseValue, string $to): float
     {
         return match ($to) {
-            // Length
             'mm' => $baseValue,
             'cm' => $baseValue / 10,
             'm', 'mtr' => $baseValue / 1000,
             'inch', 'in' => $baseValue / 25.4,
             'ft', 'feet' => $baseValue / 304.8,
 
-            // Area
             'sqmm' => $baseValue,
             'sqcm' => $baseValue / 100,
             'sqm', 'sqmtr' => $baseValue / 1000000,
             'sqft' => $baseValue / 92903.04,
 
-            // Weight
-            'g' => $baseValue * 1000,
-            'kg' => $baseValue,
+            'g' => $baseValue,
+            'kg' => $baseValue / 1000,
 
-            // Quantities
             'pcs', 'nos', 'piece' => $baseValue,
-            
-            default => throw new InvalidArgumentException("Unknown unit for conversion: {$to}")
+
+            default => throw new InvalidArgumentException("Unknown unit for conversion: {$to}"),
         };
     }
 }

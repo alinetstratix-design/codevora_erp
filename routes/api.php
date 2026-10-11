@@ -20,8 +20,13 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LookupController;
+use App\Http\Controllers\Api\AuthTokenController;
+
+// Token login for API clients (Sanctum personal access token)
+Route::post('login', [AuthTokenController::class, 'login'])->middleware('throttle:5,1');
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('logout', [AuthTokenController::class, 'logout']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });

@@ -34,6 +34,9 @@ class StoreCompanySettingRequest extends FormRequest
             'website' => 'nullable|string|max:255',
             'bank_details' => 'nullable|string',
             'terms_conditions' => 'nullable|string',
+            'installation_prerequisites' => 'nullable|string',
+            'default_tax_percent' => 'nullable|numeric|min:0|max:100',
+            'gstin' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'authorized_signature' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ];

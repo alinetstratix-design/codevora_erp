@@ -2,8 +2,13 @@
     <table class="company-header-table">
         <tr>
             <td width="38%" style="vertical-align: middle;">
-                @if(!empty($company->logo) && file_exists(public_path($company->logo)))
-                    <img src="{{ public_path($company->logo) }}" style="height: 75px; max-width: 260px; object-fit: contain;" alt="Logo">
+                @php
+                    $logoFile = !empty($company->logo)
+                        ? storage_path('app/public/' . \Illuminate\Support\Str::after($company->logo, 'storage/'))
+                        : null;
+                @endphp
+                @if($logoFile && is_file($logoFile))
+                    <img src="{{ $logoFile }}" style="height: 75px; max-width: 260px; object-fit: contain;" alt="Logo">
                 @else
                     <div style="font-size: 16pt; font-weight: bold; color: #1b305b; letter-spacing: 0.5px;">
                         {{ $company->companyName ?? config('app.name', 'Codevora ERP') }}

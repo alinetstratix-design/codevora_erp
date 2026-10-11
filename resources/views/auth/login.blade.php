@@ -116,7 +116,7 @@
                 <label for="email" class="form-label small fw-semibold text-secondary">Email Address</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-envelope"></i></span>
-                    <input type="email" class="form-control border-start-0 ps-0 @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', 'admin@codevora.com') }}" required autofocus placeholder="name@company.com">
+                    <input type="email" class="form-control border-start-0 ps-0 @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}" required autofocus placeholder="name@company.com">
                 </div>
             </div>
 
@@ -139,19 +139,7 @@
                 <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
             </button>
         </form>
-
-        <div class="credentials-pill mt-3">
-            <div class="fw-semibold text-dark mb-1"><i class="bi bi-info-circle text-primary me-1"></i> Default Demo Credentials:</div>
-            <div class="d-flex justify-content-between mb-1">
-                <span>Email:</span>
-                <code>admin@codevora.com</code>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span>Password:</span>
-                <code>password123</code>
-            </div>
-        </div>
-    </div>
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>

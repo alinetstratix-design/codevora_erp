@@ -74,10 +74,7 @@ class QuotationReportBuilder
 
     public function buildCompany(Quotation $quotation): CompanyDTO
     {
-        $setting = $quotation->companySetting 
-            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
-            ?? CompanySetting::find($quotation->company_id) 
-            ?? CompanySetting::first();
+        $setting = $quotation->companySetting ?? CompanySetting::forCompany($quotation->company_id);
         $data = $setting ? $setting->toArray() : [];
         return new CompanyDTO($data);
     }
@@ -230,6 +227,20 @@ class QuotationReportBuilder
             
             $drawing = new DrawingDTO($svgHtml, 'View From Inside', $metadata);
 
+            // Items with several sizes get one drawing per size (the main drawing shows the first size).
+            $sizeRows = $item->sizes ? $item->sizes->toArray() : [];
+            $sizeDrawings = [];
+            if (count($sizeRows) > 1) {
+                foreach ($sizeRows as $n => $sz) {
+                    $szUnit = $sz['unit'] ?? $unit;
+                    $szSvg = SvgGenerator::generateWindowDrawing((float) $sz['width'], (float) $sz['height'], $szUnit, $system, $metadata);
+                    $sizeDrawings[] = [
+                        'svg_base64' => base64_encode($szSvg),
+                        'label' => '#' . ($n + 1) . ': ' . $sz['width'] . ' x ' . $sz['height'] . ' ' . $szUnit . ' (Qty: ' . ($sz['quantity'] ?? 1) . ')',
+                    ];
+                }
+            }
+
             $profileDetails = $item->profile_details ?? [];
             if (!isset($profileDetails['Profile Color']) && !empty($item->color ?? $item->profile_color)) {
                 $profileDetails['Profile Color'] = $item->color ?? $item->profile_color;
@@ -244,7 +255,8 @@ class QuotationReportBuilder
 
             $itemData['item_code'] = $item->item_code ?? ('W' . ($index + 1));
             $itemData['position'] = $item->position ?? $itemData['item_code'];
-            $itemData['sizes'] = $item->sizes ? $item->sizes->toArray() : [];
+            $itemData['sizes'] = $sizeRows;
+            $itemData['size_drawings'] = $sizeDrawings;
 
             $items[] = new ItemDTO($itemData, $drawing, $profile, $glass, $hardware, $accessory);
         }
@@ -255,10 +267,7 @@ class QuotationReportBuilder
     public function buildTerms(Quotation $quotation): TermsDTO
     {
         $termsArray = is_array($quotation->terms_conditions) ? $quotation->terms_conditions : [];
-        $setting = $quotation->companySetting 
-            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
-            ?? CompanySetting::find($quotation->company_id) 
-            ?? CompanySetting::first();
+        $setting = $quotation->companySetting ?? CompanySetting::forCompany($quotation->company_id);
         $prereqs = $setting && is_array($setting->installation_prerequisites) ? $setting->installation_prerequisites : [];
 
         return new TermsDTO($termsArray, $prereqs);
@@ -266,10 +275,7 @@ class QuotationReportBuilder
 
     public function buildBank(Quotation $quotation): BankDTO
     {
-        $setting = $quotation->companySetting 
-            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
-            ?? CompanySetting::find($quotation->company_id) 
-            ?? CompanySetting::first();
+        $setting = $quotation->companySetting ?? CompanySetting::forCompany($quotation->company_id);
         $bankDetails = (!empty($quotation->bank_details) && is_array($quotation->bank_details)) 
             ? $quotation->bank_details 
             : ($setting && is_array($setting->bank_details) ? $setting->bank_details : []);
@@ -278,10 +284,7 @@ class QuotationReportBuilder
 
     public function buildSignature(Quotation $quotation): SignatureDTO
     {
-        $setting = $quotation->companySetting 
-            ?? CompanySetting::where('company_id', $quotation->company_id)->first() 
-            ?? CompanySetting::find($quotation->company_id) 
-            ?? CompanySetting::first();
+        $setting = $quotation->companySetting ?? CompanySetting::forCompany($quotation->company_id);
         $sigImage = $setting ? ($setting->authorized_signature ?? '') : '';
         return new SignatureDTO('Authorized Signatory', 'Signature of Customer', $sigImage);
     }

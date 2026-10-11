@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Material;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MaterialWebController extends Controller
 {
@@ -21,8 +22,10 @@ class MaterialWebController extends Controller
 
     public function store(Request $request)
     {
+        $companyId = $request->user()->company_id;
+
         $validated = $request->validate([
-            'sku' => 'required|unique:materials',
+            'sku' => ['required', 'string', 'max:100', Rule::unique('materials', 'sku')->where('company_id', $companyId)],
             'name' => 'required|string|max:255',
             'category' => 'required|string',
             'uom' => 'required|string',
@@ -30,7 +33,7 @@ class MaterialWebController extends Controller
             'waste_percent' => 'nullable|numeric|min:0',
         ]);
 
-        $validated['company_id'] = auth()->user()->company_id ?? 14;
+        $validated['company_id'] = $companyId;
         $validated['is_active'] = true;
 
         Material::create($validated);
@@ -46,7 +49,7 @@ class MaterialWebController extends Controller
     public function update(Request $request, Material $material)
     {
         $validated = $request->validate([
-            'sku' => 'required|unique:materials,sku,' . $material->id,
+            'sku' => ['required', 'string', 'max:100', Rule::unique('materials', 'sku')->ignore($material->id)->where('company_id', $material->company_id)],
             'name' => 'required|string|max:255',
             'category' => 'required|string',
             'uom' => 'required|string',
