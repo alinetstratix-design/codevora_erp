@@ -5,14 +5,32 @@ set -e
 PORT="${PORT:-80}"
 sed -i "s/listen [0-9]*;/listen $PORT;/g" /etc/nginx/sites-available/default
 
-# Set default DB environment variables if not provided
-export DB_CONNECTION="${DB_CONNECTION:-sqlite}"
-export DB_DATABASE="${DB_DATABASE:-/var/www/database/database.sqlite}"
+# Ensure active database credentials are used (overrides stale Render environment variables)
+if [ "$DB_HOST" = "dpg-da291m67bikc73e20jn0-a" ] || [ -z "$DB_HOST" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
+    echo "Overriding stale DB_HOST with active PostgreSQL instance..."
+    export DB_CONNECTION="pgsql"
+    export DB_HOST="dpg-db5htg8473hc73b804lg-a"
+    export DB_PORT="5432"
+    export DB_DATABASE="fqms_user"
+    export DB_USERNAME="fqms_user"
+    export DB_PASSWORD="gT0riMRqiy0LJ2hiAm1PQnYFx6xNLdHV"
+    export DATABASE_URL="postgresql://fqms_user:gT0riMRqiy0LJ2hiAm1PQnYFx6xNLdHV@dpg-db5htg8473hc73b804lg-a:5432/fqms_user"
+fi
 
 # Create .env from .env.example if missing
 if [ ! -f /var/www/.env ]; then
     echo "Creating .env file from .env.example..."
     cp /var/www/.env.example /var/www/.env
+fi
+
+# Sync active DB settings into .env file
+if [ -f /var/www/.env ]; then
+    sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=${DB_CONNECTION}|g" /var/www/.env
+    sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|g" /var/www/.env
+    sed -i "s|^DB_PORT=.*|DB_PORT=${DB_PORT}|g" /var/www/.env
+    sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE}|g" /var/www/.env
+    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|g" /var/www/.env
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|g" /var/www/.env
 fi
 
 # Ensure SQLite file and directory permissions exist

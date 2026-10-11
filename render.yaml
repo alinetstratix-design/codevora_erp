@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fqmsapi
+    name: fqmsapi-4cbp
     env: docker
     plan: free
     region: singapore
