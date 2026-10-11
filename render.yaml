@@ -21,29 +21,14 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        fromDatabase:
-          name: fqms-db
-          property: host
+        value: dpg-db5htg8473hc73b804lg-a
       - key: DB_PORT
-        fromDatabase:
-          name: fqms-db
-          property: port
+        value: "5432"
       - key: DB_DATABASE
-        fromDatabase:
-          name: fqms-db
-          property: database
+        value: fqms_user
       - key: DB_USERNAME
-        fromDatabase:
-          name: fqms-db
-          property: user
+        value: fqms_user
       - key: DB_PASSWORD
-        fromDatabase:
-          name: fqms-db
-          property: password
-
-databases:
-  - name: fqms-db
-    plan: free
-    region: singapore
-    databaseName: fqms_db
-    user: fqms_user
+        value: gT0riMRqiy0LJ2hiAm1PQnYFx6xNLdHV
+      - key: DATABASE_URL
+        value: postgresql://fqms_user:gT0riMRqiy0LJ2hiAm1PQnYFx6xNLdHV@dpg-db5htg8473hc73b804lg-a:5432/fqms_user
