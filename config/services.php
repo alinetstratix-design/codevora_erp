@@ -25,6 +25,12 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
+    // Cloudflare Turnstile for the public trial form. Leave keys empty to disable.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

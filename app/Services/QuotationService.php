@@ -39,6 +39,26 @@ class QuotationService
     }
 
     /**
+     * Delete = soft delete. The quotation, its items, BOM snapshots and PDF stay in the database
+     * and on disk; only visibility is removed. Who deleted it and when is kept on the row and in
+     * the audit log. The quotation number stays reserved (nextQuotationNumber() counts trashed rows).
+     */
+    public function deleteQuotation(Quotation $quotation, ?int $userId = null): void
+    {
+        DB::transaction(function () use ($quotation, $userId) {
+            $quotation->forceFill(['deleted_by' => $userId])->saveQuietly();
+            $quotation->delete();
+
+            \App\Models\AuditLog::record('quotation.deleted', $quotation, $quotation->quotation_number, [
+                'status' => $quotation->status,
+                'client' => $quotation->client_name,
+                'project' => $quotation->project_name,
+                'grand_total' => $quotation->grand_total,
+            ]);
+        });
+    }
+
+    /**
      * Next quotation number for a company, e.g. QT-20261012-0001.
      * The unique index on (company_id, quotation_number) guarantees no duplicates.
      */

@@ -35,6 +35,15 @@ class UserController extends Controller
             'status' => ['nullable', Rule::in(self::STATUSES)],
         ]);
 
+        $company = $request->user()->company;
+        $creatingActive = ($data['status'] ?? 'Active') === 'Active';
+
+        if ($creatingActive && $company->seatsFull()) {
+            return response()->json([
+                'message' => "User limit reached ({$company->activeSeatCount()}/{$company->seatLimit()}). Please upgrade your plan.",
+            ], 422);
+        }
+
         $user = User::create([
             'company_id' => $request->user()->company_id,
             'name' => $data['name'],
@@ -69,6 +78,15 @@ class UserController extends Controller
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);
+        }
+
+        $company = $request->user()->company;
+        $reactivating = $user->status !== 'Active' && ($data['status'] ?? $user->status) === 'Active';
+
+        if ($reactivating && $company->seatsFull()) {
+            return response()->json([
+                'message' => "User limit reached ({$company->activeSeatCount()}/{$company->seatLimit()}). Deactivate another member or upgrade your plan first.",
+            ], 422);
         }
 
         // An admin must not be able to demote or deactivate themselves (lock-out).

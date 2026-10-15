@@ -7,6 +7,7 @@
 <meta name="description" content="FrameQuote by Codevora provides cloud-based estimation, CAD elevations, factory BOM, and instant quotation generation for uPVC and Aluminium windows & doors.">
 <link rel="icon" type="image/png" href="{{ asset('images/framequote-logo.png') }}">
 <meta name="theme-color" content="#0a66c2">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -684,6 +685,9 @@
         <a href="{{ route('login') }}" class="btn btn-primary btn-lg">
           <i class="bi bi-play-circle-fill"></i> Start Live Quotation
         </a>
+        <button type="button" class="btn btn-outline btn-lg" data-trial-open>
+          <i class="bi bi-gift"></i> Request 3-Day Free Trial
+        </button>
         <a href="#configurator" class="btn btn-outline btn-lg">
           <i class="bi bi-sliders"></i> Try Live Configurator
         </a>
@@ -955,6 +959,40 @@
 </div>
 
 <!-- Footer -->
+<section class="page-section" id="pricing">
+  <div style="max-width:1100px;margin:0 auto;padding:0 20px">
+    <h2 style="text-align:center;font-family:'Plus Jakarta Sans',sans-serif">Simple, transparent pricing</h2>
+    <p style="text-align:center;color:#5b6775">Start with a 3-day free trial. Upgrade when you are ready.</p>
+    <div class="pricing-grid">
+      @foreach(config('subscription.plans') as $plan)
+        <div class="price-card{{ $plan['highlight'] ? ' featured' : '' }}">
+          <h3>{{ $plan['name'] }}</h3>
+          <div class="price">{{ $plan['price'] ?? 'Contact us' }}</div>
+          <small>{{ $plan['period'] }}</small>
+          <ul>
+            @foreach($plan['features'] as $feature)
+              <li>{{ $feature }}</li>
+            @endforeach
+          </ul>
+          @if($plan['cta'] === 'trial')
+            <button type="button" class="btn btn-primary" data-trial-open>Start free trial</button>
+          @else
+            <a href="mailto:{{ config('app.support_email') }}?subject=Plan%20enquiry%20-%20{{ rawurlencode($plan['name']) }}" class="btn btn-outline">Contact sales</a>
+          @endif
+        </div>
+      @endforeach
+    </div>
+  </div>
+</section>
+<style>
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:28px}
+.price-card{border:1px solid #dfe5ee;border-radius:14px;padding:24px;background:#fff}
+.price-card.featured{border-color:#0a66c2;box-shadow:0 10px 30px rgba(10,102,194,.15)}
+.price-card h3{font-family:'Plus Jakarta Sans',sans-serif;margin:0 0 6px}
+.price{font-size:1.9rem;font-weight:800;margin:6px 0 2px}
+.price-card ul{padding-left:18px;margin:14px 0 18px;color:#3b4654}
+</style>
+
 <footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
@@ -1132,6 +1170,132 @@
   document.addEventListener('DOMContentLoaded', () => {
     updateConfig();
   });
+</script>
+
+<!-- 3-day free trial request dialog -->
+<style>
+.trial-overlay{position:fixed;inset:0;background:rgba(10,20,35,.55);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px}
+.trial-overlay.open{display:flex}
+.trial-box{background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:'Inter',sans-serif;color:#1d2733}
+.trial-box h3{margin:0 0 4px;font-family:'Plus Jakarta Sans',sans-serif;font-size:1.35rem}
+.trial-box .sub{color:#5b6775;font-size:.92rem;margin:0 0 18px}
+.trial-box label{display:block;font-size:.85rem;font-weight:600;margin:12px 0 4px}
+.trial-box input,.trial-box select{width:100%;padding:10px 12px;border:1px solid #cdd5df;border-radius:8px;font-size:.95rem;box-sizing:border-box}
+.trial-box .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.trial-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.trial-btn{padding:10px 18px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+.trial-btn.primary{background:#0a66c2;color:#fff}
+.trial-btn.primary[disabled]{opacity:.6;cursor:wait}
+.trial-btn.ghost{background:#eef2f7;color:#1d2733}
+.trial-msg{margin-top:14px;padding:10px 12px;border-radius:8px;font-size:.9rem;display:none}
+.trial-msg.ok{display:block;background:#e8f7ee;color:#156b35}
+.trial-msg.err{display:block;background:#fdecec;color:#9b1c1c}
+.trial-err-field{color:#9b1c1c;font-size:.8rem;margin-top:3px;display:none}
+@media (max-width:560px){.trial-box .row2{grid-template-columns:1fr}}
+</style>
+<div class="trial-overlay" id="trialOverlay" role="dialog" aria-modal="true" aria-labelledby="trialTitle">
+  <div class="trial-box">
+    <h3 id="trialTitle">Start your 3-day free trial</h3>
+    <p class="sub">Tell us about your business. Our team reviews each request and emails your login details.</p>
+    <form id="trialForm" novalidate>
+      <div class="row2">
+        <div><label for="tr_name">Your name *</label><input id="tr_name" name="name" required maxlength="150"><div class="trial-err-field" data-err="name"></div></div>
+        <div><label for="tr_phone">Phone *</label><input id="tr_phone" name="phone" required maxlength="30"><div class="trial-err-field" data-err="phone"></div></div>
+      </div>
+      <label for="tr_company">Company name *</label>
+      <input id="tr_company" name="company_name" required maxlength="150"><div class="trial-err-field" data-err="company_name"></div>
+      <label for="tr_email">Work email * (your login ID)</label>
+      <input id="tr_email" name="email" type="email" required maxlength="150"><div class="trial-err-field" data-err="email"></div>
+      <div class="row2">
+        <div><label for="tr_location">City / Location</label><input id="tr_location" name="location" maxlength="150"></div>
+        <div><label for="tr_fab">Fabrication type</label>
+          <select id="tr_fab" name="fabrication_type">
+            <option value="Both">uPVC and Aluminium</option>
+            <option value="uPVC">uPVC</option>
+            <option value="Aluminium">Aluminium</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+        <label>Website <input name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+      @if(config('services.turnstile.site_key'))
+        <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" style="margin-top:12px"></div>
+      @endif
+      <div class="trial-msg" id="trialMsg" role="status"></div>
+      <div class="trial-actions">
+        <button type="button" class="trial-btn ghost" data-trial-close>Cancel</button>
+        <button type="submit" class="trial-btn primary" id="trialSubmit">Request trial</button>
+      </div>
+    </form>
+  </div>
+</div>
+@if(config('services.turnstile.site_key'))
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+@endif
+<script>
+(function () {
+  var overlay = document.getElementById('trialOverlay');
+  var form = document.getElementById('trialForm');
+  var msg = document.getElementById('trialMsg');
+  var submitBtn = document.getElementById('trialSubmit');
+
+  function open() { overlay.classList.add('open'); document.getElementById('tr_name').focus(); }
+  function close() { overlay.classList.remove('open'); }
+  function clearErrors() {
+    msg.className = 'trial-msg'; msg.textContent = '';
+    form.querySelectorAll('[data-err]').forEach(function (el) { el.textContent = ''; el.style.display = 'none'; });
+  }
+
+  document.querySelectorAll('[data-trial-open]').forEach(function (b) { b.addEventListener('click', open); });
+  overlay.querySelectorAll('[data-trial-close]').forEach(function (b) { b.addEventListener('click', close); });
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearErrors();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+
+    fetch("{{ route('demo-requests.store') }}", {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))
+    })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, data: j }; }); })
+    .then(function (res) {
+      if (res.data && res.data.success) {
+        msg.className = 'trial-msg ok';
+        msg.textContent = res.data.message;
+        form.reset();
+        return;
+      }
+      if (res.data && res.data.errors) {
+        Object.keys(res.data.errors).forEach(function (k) {
+          var el = form.querySelector('[data-err="' + k + '"]');
+          if (el) { el.textContent = res.data.errors[k][0]; el.style.display = 'block'; }
+        });
+      }
+      msg.className = 'trial-msg err';
+      msg.textContent = (res.data && res.data.message) || 'Please check the highlighted fields and try again.';
+    })
+    .catch(function () {
+      msg.className = 'trial-msg err';
+      msg.textContent = 'Network error. Please try again.';
+    })
+    .finally(function () {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Request trial';
+    });
+  });
+})();
 </script>
 </body>
 </html>

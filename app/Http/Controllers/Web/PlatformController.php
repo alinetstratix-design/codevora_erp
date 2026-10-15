@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Web;
 use App\Constants\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\DemoRequest;
 use App\Models\User;
 use App\Services\AccountProvisioningService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 
 /**
@@ -28,13 +30,48 @@ class PlatformController extends Controller
             ->orderBy('name')
             ->get();
 
+        $onTrial = 0;
+        $onPaid = 0;
+        $ended = 0;
+        $expiringSoon = collect();
+
+        foreach ($companies as $company) {
+            if ($company->isTrialActive()) {
+                $onTrial++;
+            }
+
+            if ($company->isSubscriptionActive()) {
+                $onPaid++;
+            }
+
+            $onPlan = in_array($company->subscription_status, ['Trial', 'Active'], true);
+
+            if ($company->is_active && $onPlan && $company->accessLevel() === 'locked') {
+                $ended++;
+            }
+
+            $expiry = $company->expiryDate();
+
+            if ($company->is_active && $onPlan && $expiry && $expiry->isFuture() && $expiry->lte(now()->addDays(7))) {
+                $expiringSoon->push($company);
+            }
+        }
+
         $stats = [
-            'companies' => Company::count(),
-            'active_companies' => Company::where('is_active', true)->count(),
+            'companies' => $companies->count(),
+            'active_companies' => $companies->where('is_active', true)->count(),
+            'on_trial' => $onTrial,
+            'on_paid' => $onPaid,
+            'expiring_soon' => $expiringSoon->count(),
+            'ended' => $ended,
             'company_users' => User::whereNotNull('company_id')->count(),
+            'active_users' => User::whereNotNull('company_id')->where('status', 'Active')->count(),
+            'pending_requests' => DemoRequest::where('status', 'pending')->count(),
         ];
 
-        return view('platform.index', compact('companies', 'stats'));
+        $pendingRequests = DemoRequest::where('status', 'pending')->latest()->limit(5)->get();
+
+        return view('platform.index', compact('companies', 'stats', 'pendingRequests', 'expiringSoon'));
     }
 
     public function create()
@@ -69,9 +106,9 @@ class PlatformController extends Controller
             ->with('temp_email', $admin->email);
     }
 
-    public function toggleActive(Company $company)
+    public function toggleActive(Request $request, Company $company)
     {
-        $company->update(['is_active' => !$company->is_active]);
+        app(SubscriptionService::class)->setActive($company, !$company->is_active, $request->user());
 
         $message = $company->is_active
             ? 'Company activated. Its users can sign in again.'

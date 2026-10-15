@@ -67,5 +67,6 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\CheckRole::class,
         'active' => \App\Http\Middleware\EnsureAccountIsActive::class,
         'password.changed' => \App\Http\Middleware\EnsurePasswordChanged::class,
+        'subscription.active' => \App\Http\Middleware\EnsureSubscriptionIsActive::class,
     ];
 }

@@ -27,6 +27,14 @@ class EnforceLoginWindow
 
         $loginAt = $request->session()->get(self::LOGIN_AT_KEY);
 
+        if ($loginAt === null) {
+            // Signed-in session without a login time (tests, or sessions created before this rule).
+            // Start the 24h window now instead of forcing a logout.
+            $request->session()->put(self::LOGIN_AT_KEY, now()->timestamp);
+
+            return $next($request);
+        }
+
         if (!is_int($loginAt) || (now()->timestamp - $loginAt) >= self::MAX_AGE_SECONDS) {
             return $this->endSession($request);
         }

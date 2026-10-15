@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\DesignController;
+use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\Web\AccountController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\CompanySettingController;
@@ -9,6 +11,7 @@ use App\Http\Controllers\Web\CustomerWebController;
 use App\Http\Controllers\Web\DashboardWebController;
 use App\Http\Controllers\Web\MaterialWebController;
 use App\Http\Controllers\Web\PlatformController;
+use App\Http\Controllers\Web\Platform\DemoRequestManagementController;
 use App\Http\Controllers\Web\ProductWebController;
 use App\Http\Controllers\Web\QuotationWebController;
 use App\Http\Controllers\Web\TeamController;
@@ -16,6 +19,11 @@ use Illuminate\Support\Facades\Route;
 
 // Public marketing page. Signed-in users are sent to their dashboard.
 Route::get('/', [LandingController::class, 'index'])->name('landing');
+
+// Public demo & 3-day trial request endpoint (throttled)
+Route::post('/demo-requests', [DemoRequestController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('demo-requests.store');
 
 // Guests: sign in and password recovery (throttled).
 Route::middleware('guest')->group(function () {
@@ -41,17 +49,34 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/account/password', [AccountController::class, 'editPassword'])->name('account.password.edit');
     Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
 
-    Route::middleware('password.changed')->group(function () {
-        Route::get('/dashboard', [DashboardWebController::class, 'index'])->name('dashboard');
+    // Subscription expired / renewal lock screen
+    Route::get('/subscription/expired', [SubscriptionController::class, 'expired'])->name('subscription.expired');
 
-        // Platform console: Super Admin only.
-        Route::middleware('role:SuperAdmin')->prefix('platform')->name('platform.')->group(function () {
-            Route::get('/', [PlatformController::class, 'index'])->name('index');
-            Route::get('/companies/create', [PlatformController::class, 'create'])->name('companies.create');
-            Route::post('/companies', [PlatformController::class, 'store'])->name('companies.store');
-            Route::patch('/companies/{company}/toggle', [PlatformController::class, 'toggleActive'])->name('companies.toggle');
-            Route::post('/companies/{company}/admins/{user}/reset-password', [PlatformController::class, 'resetAdminPassword'])->name('companies.admins.reset');
-        });
+    // Platform console: Super Admin only (exempt from subscription gate)
+    Route::middleware(['password.changed', 'role:SuperAdmin'])->prefix('platform')->name('platform.')->group(function () {
+        Route::get('/', [PlatformController::class, 'index'])->name('index');
+        Route::get('/companies/create', [PlatformController::class, 'create'])->name('companies.create');
+        Route::post('/companies', [PlatformController::class, 'store'])->name('companies.store');
+        Route::patch('/companies/{company}/toggle', [PlatformController::class, 'toggleActive'])->name('companies.toggle');
+        Route::post('/companies/{company}/admins/{user}/reset-password', [PlatformController::class, 'resetAdminPassword'])->name('companies.admins.reset');
+
+        // Demo Requests & Subscription Management
+        Route::get('/demo-requests', [DemoRequestManagementController::class, 'index'])->name('demo-requests.index');
+        Route::post('/demo-requests/{demoRequest}/approve', [DemoRequestManagementController::class, 'approve'])->name('demo-requests.approve');
+        Route::post('/demo-requests/{demoRequest}/reject', [DemoRequestManagementController::class, 'reject'])->name('demo-requests.reject');
+        Route::post('/companies/{company}/subscription', [DemoRequestManagementController::class, 'updateSubscription'])->name('companies.subscription');
+        Route::get('/companies/{company}/audit', [\App\Http\Controllers\Web\Platform\SubscriptionAuditController::class, 'index'])->name('companies.audit');
+
+        // Company detail: users, seats, add/edit users (Super Admin only)
+        Route::get('/companies/{company}', [\App\Http\Controllers\Web\Platform\PlatformCompanyController::class, 'show'])->name('companies.show');
+        Route::post('/companies/{company}/users', [\App\Http\Controllers\Web\Platform\PlatformCompanyController::class, 'storeUser'])->name('companies.users.store');
+        Route::put('/companies/{company}/users/{user}', [\App\Http\Controllers\Web\Platform\PlatformCompanyController::class, 'updateUser'])->name('companies.users.update');
+        Route::patch('/companies/{company}/seats', [\App\Http\Controllers\Web\Platform\PlatformCompanyController::class, 'updateSeats'])->name('companies.seats');
+    });
+
+    // Company ERP routes (guarded by password.changed and subscription.active)
+    Route::middleware(['password.changed', 'subscription.active'])->group(function () {
+        Route::get('/dashboard', [DashboardWebController::class, 'index'])->name('dashboard');
 
         // Company team: company Admin only.
         Route::middleware('role:Admin')->prefix('team')->name('team.')->group(function () {
@@ -62,6 +87,10 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('/{user}', [TeamController::class, 'update'])->name('update');
             Route::post('/{user}/reset-password', [TeamController::class, 'resetPassword'])->name('reset-password');
         });
+
+        // Activity trail: company Admin only, read-only.
+        Route::get('/activity', [\App\Http\Controllers\Web\ActivityLogController::class, 'index'])
+            ->middleware('role:Admin')->name('activity.index');
 
         Route::post('customers/ajax', [CustomerWebController::class, 'storeAjax'])->name('customers.storeAjax');
         Route::resource('customers', CustomerWebController::class);

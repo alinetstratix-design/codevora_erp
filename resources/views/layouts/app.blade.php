@@ -65,7 +65,7 @@
 <div class="d-flex">
     <!-- Main Sidebar Container -->
     <aside class="sidebar p-3" style="width: 250px;">
-        <a href="{{ route('dashboard') }}" class="d-flex flex-column mb-3 text-white text-decoration-none">
+        <a href="{{ auth()->user()?->isSuperAdmin() ? route('platform.index') : route('dashboard') }}" class="d-flex flex-column mb-3 text-white text-decoration-none">
             <div class="bg-white p-2 rounded-2 mb-2 text-center">
                 <img src="{{ asset('images/framequote-logo.png') }}" alt="FrameQuote Logo" style="height: 32px; object-fit: contain;">
             </div>
@@ -78,8 +78,15 @@
         <ul class="nav nav-pills flex-column mb-auto mt-3">
             @if(auth()->user()?->isSuperAdmin())
             <li>
-                <a href="{{ route('platform.index') }}" class="nav-link {{ request()->routeIs('platform.*') ? 'active' : '' }}">
-                    <i class="bi bi-buildings me-2"></i> Companies
+                <a href="{{ route('platform.index') }}" class="nav-link {{ request()->routeIs('platform.index', 'platform.companies.*') ? 'active' : '' }}">
+                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                </a>
+            </li>
+            @php($pendingDemo = \App\Models\DemoRequest::where('status', 'pending')->count())
+            <li>
+                <a href="{{ route('platform.demo-requests.index') }}" class="nav-link {{ request()->routeIs('platform.demo-requests.*') ? 'active' : '' }}">
+                    <i class="bi bi-person-check me-2"></i> Trial Requests
+                    @if($pendingDemo > 0)<span class="badge bg-warning text-dark ms-1">{{ $pendingDemo }}</span>@endif
                 </a>
             </li>
             @else
@@ -119,6 +126,11 @@
             <li>
                 <a href="{{ route('team.index') }}" class="nav-link {{ request()->routeIs('team.*') ? 'active' : '' }}">
                     <i class="bi bi-person-gear me-2"></i> Team
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('activity.index') }}" class="nav-link {{ request()->routeIs('activity.*') ? 'active' : '' }}">
+                    <i class="bi bi-clock-history me-2"></i> Activity
                 </a>
             </li>
             @endif
@@ -190,6 +202,10 @@
                 </div>
             @endif
 
+            @php($accessLevel = (auth()->user() && !auth()->user()->isSuperAdmin()) ? auth()->user()->company?->accessLevel() : 'full')
+            @if($accessLevel === 'read_only')
+                <div class="alert alert-warning mb-3"><strong>Read-only mode.</strong> Your subscription has ended. You can view your data, but creating or editing is disabled until you renew. Contact <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>.</div>
+            @endif
             @yield('content')
         </main>
     </div>

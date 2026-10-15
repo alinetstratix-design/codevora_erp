@@ -17,6 +17,15 @@ class EnsureAccountIsActive
         $user = $request->user();
 
         if ($user && !$user->canSignIn()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                $request->user()->currentAccessToken()?->delete();
+
+                return response()->json([
+                    'message' => 'Your account or company is inactive. Please contact your administrator.',
+                    'account_inactive' => true,
+                ], 403);
+            }
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

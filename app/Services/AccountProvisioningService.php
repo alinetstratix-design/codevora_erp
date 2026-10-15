@@ -32,6 +32,9 @@ class AccountProvisioningService
             $companyModel = Company::create([
                 'name' => $company['name'],
                 'is_active' => true,
+                'subscription_status' => 'Active',
+                'subscription_ends_at' => now()->addYear(),
+                'max_users' => $company['max_users'] ?? 10,
             ]);
 
             CompanySetting::create([

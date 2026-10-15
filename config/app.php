@@ -17,6 +17,10 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Shown on the subscription-expired screen. Set these in .env.
+    'support_whatsapp' => env('SUPPORT_WHATSAPP'), // digits with country code, e.g. 919xxxxxxxxx
+    'support_email' => env('SUPPORT_EMAIL', 'support@example.com'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

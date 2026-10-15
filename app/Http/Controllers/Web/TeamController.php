@@ -45,6 +45,12 @@ class TeamController extends Controller
             'role' => ['required', Rule::in(UserRole::companyRoles())],
         ]);
 
+        $company = $request->user()->company;
+
+        if ($company->seatsFull()) {
+            return back()->withInput()->with('error', "User limit reached ({$company->activeSeatCount()}/{$company->seatLimit()}). Please upgrade your subscription to add more team members.");
+        }
+
         $temp = $this->accounts->generateTempPassword();
 
         $this->accounts->createUser(
@@ -79,6 +85,12 @@ class TeamController extends Controller
             'role' => ['required', Rule::in(UserRole::companyRoles())],
             'status' => ['required', Rule::in(['Active', 'Inactive'])],
         ]);
+
+        $reactivating = $user->status !== 'Active' && $data['status'] === 'Active';
+
+        if ($reactivating && $request->user()->company->seatsFull()) {
+            return back()->withErrors(['status' => 'User limit reached. Deactivate another member or upgrade your plan before reactivating this user.'])->withInput();
+        }
 
         $losesAdminAccess = $data['role'] !== UserRole::ADMIN || $data['status'] !== 'Active';
 

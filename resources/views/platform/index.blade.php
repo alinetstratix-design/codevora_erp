@@ -1,49 +1,114 @@
 @extends('layouts.app')
-@section('title', 'Companies')
+@section('title', 'Super Admin Dashboard')
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Companies</div><div class="fs-3 fw-bold">{{ $stats['companies'] }}</div></div></div></div>
-    <div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Active companies</div><div class="fs-3 fw-bold">{{ $stats['active_companies'] }}</div></div></div></div>
-    <div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Company users</div><div class="fs-3 fw-bold">{{ $stats['company_users'] }}</div></div></div></div>
-</div>
-
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <p class="text-muted mb-0">Each company gets its own data, settings and admin account.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1">Super Admin Dashboard</h3>
+        <p class="text-muted small mb-0">Every company, its subscription and users, plus the trial approval queue.</p>
+    </div>
     <a href="{{ route('platform.companies.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> New company</a>
 </div>
 
+<div class="row g-3 mb-4">
+    @php
+        $cards = [
+            ['Companies', $stats['companies'], 'bi-buildings', 'text-primary'],
+            ['Active companies', $stats['active_companies'], 'bi-check-circle', 'text-success'],
+            ['On free trial', $stats['on_trial'], 'bi-hourglass-split', 'text-warning'],
+            ['On paid plan', $stats['on_paid'], 'bi-award', 'text-success'],
+            ['Expiring in 7 days', $stats['expiring_soon'], 'bi-alarm', 'text-danger'],
+            ['Access ended', $stats['ended'], 'bi-lock', 'text-secondary'],
+            ['Users (active / total)', $stats['active_users'].' / '.$stats['company_users'], 'bi-people', 'text-info'],
+            ['Pending trial requests', $stats['pending_requests'], 'bi-inbox', 'text-danger'],
+        ];
+    @endphp
+    @foreach($cards as [$label, $value, $icon, $tone])
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small"><i class="bi {{ $icon }} {{ $tone }} me-1"></i>{{ $label }}</div>
+                    <div class="fs-3 fw-bold">{{ $value }}</div>
+                </div>
+            </div>
+        </div>
+    @endforeach
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong>Approval queue: trial requests</strong>
+                <a href="{{ route('platform.demo-requests.index', ['status' => 'pending']) }}" class="small">View all</a>
+            </div>
+            <div class="list-group list-group-flush">
+                @forelse($pendingRequests as $req)
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                        <div>
+                            <div class="fw-semibold">{{ $req->company_name }}</div>
+                            <div class="small text-muted">{{ $req->name }} &middot; {{ $req->email }} &middot; {{ $req->created_at->diffForHumans() }}</div>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <form method="POST" action="{{ route('platform.demo-requests.approve', $req) }}" onsubmit="return confirm('Approve and create the trial workspace for {{ $req->company_name }}?');">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                            </form>
+                            <form method="POST" action="{{ route('platform.demo-requests.reject', $req) }}" onsubmit="return confirm('Reject this request?');">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <div class="list-group-item text-center text-muted py-4">No pending requests.</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Expiring within 7 days</strong></div>
+            <div class="list-group list-group-flush">
+                @forelse($expiringSoon as $company)
+                    <a href="{{ route('platform.companies.show', $company) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
+                        <span>{{ $company->name }}</span>
+                        <span class="small text-muted">{{ $company->expiryDate()?->format('d M Y') }}</span>
+                    </a>
+                @empty
+                    <div class="list-group-item text-center text-muted py-4">Nobody expires this week.</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white"><strong>Companies</strong></div>
     <div class="table-responsive">
         <table class="table align-middle mb-0">
             <thead class="table-light">
                 <tr>
                     <th>Company</th>
-                    <th>Status</th>
+                    <th>Subscription</th>
                     <th>Users</th>
-                    <th>Admin accounts</th>
+                    <th>Admin</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($companies as $company)
                 <tr>
-                    <td class="fw-semibold">{{ $company->name }}</td>
-                    <td><span class="badge {{ $company->is_active ? 'bg-success' : 'bg-secondary' }}">{{ $company->is_active ? 'Active' : 'Inactive' }}</span></td>
-                    <td>{{ $company->users_count }}</td>
-                    <td>
-                        @forelse($company->users as $admin)
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <span class="small">{{ $admin->email }}</span>
-                                <form method="POST" action="{{ route('platform.companies.admins.reset', [$company, $admin]) }}" onsubmit="return confirm('Generate a new temporary password for {{ $admin->email }}?');">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary py-0">Reset password</button>
-                                </form>
-                            </div>
-                        @empty
-                            <span class="text-muted small">No admin yet</span>
-                        @endforelse
+                    <td class="fw-semibold">
+                        <a href="{{ route('platform.companies.show', $company) }}" class="text-decoration-none">{{ $company->name }}</a>
+                        @unless($company->is_active)<span class="badge bg-secondary ms-1">Deactivated</span>@endunless
                     </td>
-                    <td class="text-end">
+                    <td><span class="badge {{ $company->getSubscriptionBadge()['class'] }}">{{ $company->getSubscriptionBadge()['label'] }}</span></td>
+                    <td>{{ $company->users_count }} / {{ $company->seatLimit() }}</td>
+                    <td class="small">{{ $company->users->first()?->email ?? 'No admin yet' }}</td>
+                    <td class="text-end text-nowrap">
+                        <a href="{{ route('platform.companies.show', $company) }}" class="btn btn-sm btn-primary">Manage</a>
+                        <a href="{{ route('platform.companies.audit', $company) }}" class="btn btn-sm btn-outline-secondary">History</a>
                         <form method="POST" action="{{ route('platform.companies.toggle', $company) }}" class="d-inline">
                             @csrf
                             @method('PATCH')

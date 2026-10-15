@@ -7,6 +7,7 @@ use App\Models\CompanySetting;
 use App\Models\Customer;
 use App\Models\Lookup;
 use App\Models\Product;
+use App\Models\AuditLog;
 use App\Models\Quotation;
 use App\Http\Requests\QuotationRequest;
 use App\Services\PDFService;
@@ -119,7 +120,7 @@ class QuotationWebController extends Controller
         } catch (\Throwable $e) {
             // Keep the database and the PDF consistent: a quotation without its PDF is removed.
             Log::error('PDF generation failed while saving quotation', ['quotation_id' => $quotation->id, 'error' => $e->getMessage()]);
-            $this->deleteQuotation($quotation);
+            $this->discardUnissuedQuotation($quotation);
             $this->releaseIdempotency($idempKey);
 
             $message = 'The PDF could not be generated, so the quotation was not saved. Please try again.';
@@ -131,6 +132,11 @@ class QuotationWebController extends Controller
         if ($idempKey) {
             Cache::put('quote_idemp_val_' . $idempKey, $quotation->id, now()->addMinutes(15));
         }
+
+        AuditLog::record('quotation.created', $quotation, $quotation->quotation_number, [
+            'client' => $quotation->client_name,
+            'grand_total' => $quotation->grand_total,
+        ]);
 
         if ($request->wantsJson()) {
             return response()->json(['id' => $quotation->id]);
@@ -214,6 +220,10 @@ class QuotationWebController extends Controller
 
         $quotation = $this->quotationService->updateQuotation($quotation, $validated);
 
+        AuditLog::record('quotation.updated', $quotation, $quotation->quotation_number, [
+            'grand_total' => $quotation->grand_total,
+        ]);
+
         try {
             $this->quotationService->generateAndAttachPDF($quotation);
         } catch (\Throwable $e) {
@@ -247,7 +257,9 @@ class QuotationWebController extends Controller
      */
     public function sharedPdf(int $quotation)
     {
-        $model = Quotation::withoutGlobalScopes()
+        // Only the tenant scope is bypassed. The soft-delete scope must stay active so a
+        // deleted quotation's old client link stops working (404).
+        $model = Quotation::withoutGlobalScope(\App\Scopes\CompanyScope::class)
             ->with(['items.sizes', 'customer', 'companySetting'])
             ->findOrFail($quotation);
 
@@ -289,13 +301,13 @@ class QuotationWebController extends Controller
         ];
     }
 
-    public function destroy(Quotation $quotation)
+    public function destroy(Request $request, Quotation $quotation)
     {
         $this->authorize('delete', $quotation);
 
-        $this->deleteQuotation($quotation);
+        $this->quotationService->deleteQuotation($quotation, $request->user()->id);
 
-        return redirect()->route('quotations.index')->with('success', 'Draft quotation deleted.');
+        return redirect()->route('quotations.index')->with('success', 'Quotation deleted. The record is kept in the activity log.');
     }
 
     public function validateAjax(Quotation $quotation)
@@ -329,6 +341,11 @@ class QuotationWebController extends Controller
             }
 
             $locked->update(['status' => \App\Constants\QuotationStatus::APPROVED]);
+
+            AuditLog::record('quotation.approved', $locked, $locked->quotation_number, [
+                'from' => \App\Constants\QuotationStatus::DRAFT,
+                'to' => \App\Constants\QuotationStatus::APPROVED,
+            ]);
 
             return ['approved' => true, 'message' => null];
         });
@@ -369,7 +386,13 @@ class QuotationWebController extends Controller
                 return "A quotation with status {$locked->status} cannot be marked as {$next}.";
             }
 
+            $from = $locked->status;
             $locked->update(['status' => $next]);
+
+            AuditLog::record('quotation.status_changed', $locked, $locked->quotation_number, [
+                'from' => $from,
+                'to' => $next,
+            ]);
 
             return null;
         });
@@ -461,13 +484,18 @@ class QuotationWebController extends Controller
         return view('quotations.bom', compact('quotation', 'boms'));
     }
 
-    private function deleteQuotation(Quotation $quotation): void
+    /**
+     * Rollback for a quotation that was just created but whose PDF failed: it was never shown
+     * to the user or sent to anyone, so it is removed completely (its number is reused).
+     * User-initiated deletes never come here; they go through QuotationService::deleteQuotation().
+     */
+    private function discardUnissuedQuotation(Quotation $quotation): void
     {
         foreach ($quotation->items()->get() as $item) {
             $item->boms()->delete();
         }
         $quotation->items()->delete();
-        $quotation->delete();
+        $quotation->forceDelete();
     }
 
     private function releaseIdempotency(?string $idempKey): void

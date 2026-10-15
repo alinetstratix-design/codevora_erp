@@ -12,7 +12,9 @@ class LandingController extends Controller
     public function index()
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard');
+            return Auth::user()->isSuperAdmin()
+                ? redirect()->route('platform.index')
+                : redirect()->route('dashboard');
         }
 
         return view('landing');

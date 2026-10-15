@@ -37,9 +37,17 @@
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{{ route('quotations.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
-            @if($quotation->status !== \App\Constants\QuotationStatus::APPROVED)
+            @can('update', $quotation)
             <a href="{{ route('quotations.edit', $quotation->id) }}" class="btn btn-warning text-dark btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-pencil"></i> Edit Quotation</a>
-            @endif
+            @endcan
+            @can('delete', $quotation)
+            <form action="{{ route('quotations.destroy', $quotation->id) }}" method="POST" class="d-inline"
+                  onsubmit="return confirm('Delete this quotation? It will be hidden from the list but kept in the activity log.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-trash"></i> Delete</button>
+            </form>
+            @endcan
             <a href="{{ route('quotations.previewPdf', $quotation->id) }}" target="_blank" class="btn btn-info text-white btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-eye"></i> Preview PDF</a>
             <a href="{{ route('quotations.downloadPdf', $quotation->id) }}" class="btn btn-danger btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-file-pdf"></i> Download PDF</a>
             <a href="{{ $shareLinks['whatsapp'] }}" target="_blank" rel="noopener" class="btn btn-success btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-whatsapp"></i> WhatsApp</a>
@@ -138,7 +146,9 @@
                             </li>
                         @endforeach
                     </ul>
+                    @can('update', $quotation)
                     <a href="{{ route('quotations.edit', $quotation->id) }}" class="btn btn-sm btn-outline-danger shadow-sm"><i class="bi bi-pencil me-1"></i> Edit Quotation to Fix Issues</a>
+                    @endcan
                 @else
                     <div class="alert alert-success mb-0 py-2 small">
                         This quotation meets 100% of commercial compliance criteria and is ready for formal customer approval.

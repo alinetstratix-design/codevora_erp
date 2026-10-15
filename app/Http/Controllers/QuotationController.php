@@ -65,7 +65,8 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('delete', $quotation);
-        $quotation->delete();
+        // Soft delete + audit trail: the record is never physically removed.
+        app(\App\Services\QuotationService::class)->deleteQuotation($quotation, auth()->id());
         return response()->json(['success' => true]);
     }
 
