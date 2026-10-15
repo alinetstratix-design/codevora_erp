@@ -170,6 +170,15 @@ class QuotationValidationService
         // -------------------------------------------------------------
         // GROUP 4: Commercial Scope & Legal Terms
         // -------------------------------------------------------------
+        $specs = is_array($company->item_specs) ? $company->item_specs : [];
+        $specsComplete = collect(array_keys(config('quotation_defaults.item_spec_fields')))
+            ->every(fn ($key) => trim((string) ($specs[$key] ?? '')) !== '')
+            && !empty($company->inclusions);
+        $rules[] = new ValidationItemDTO(
+            'scope_item_specs', 'Product specifications and inclusions defined', 'Commercial Scope',
+            $specsComplete, 'Enter product specifications and inclusions in Company Settings'
+        );
+
         $rules[] = new ValidationItemDTO(
             'scope_warranty', 'Product Warranty Defined', 'Commercial Scope',
             !empty($reportDto->terms->terms), 'Product Warranty terms are missing'
@@ -204,7 +213,7 @@ class QuotationValidationService
         );
 
         $rules[] = new ValidationItemDTO(
-            'doc_pdf_generated', 'EvA PDF Document Generated', 'Document & Company',
+            'doc_pdf_generated', 'PDF Document Generated', 'Document & Company',
             !empty($quotation->pdf_path), 'PDF quotation document not generated yet'
         );
 

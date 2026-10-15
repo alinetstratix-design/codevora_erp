@@ -19,28 +19,7 @@ class ProfileDTO
     {
         $isSliding = stripos($systemName, 'SLIDING') !== false;
 
-        $defaults = $isSliding ? [
-            'Profile Color' => 'WHITE',
-            'MeshType' => '(3) SS FLYMESH',
-            'Flymesh Sash' => 'Sld Sash 39Mm X 57Mm',
-            'Flymesh Sash Ri' => 'Ri-32.6Mm X 13Mm X 24.6Mm X 15.4Mm-1.5Mm',
-            'Guide Rail' => 'Al Guide Rail(Cora-Gr)',
-            'Interlock' => 'Sld Interlock 43Mm X 40Mm (Crs-40Wsil)',
-            'Sliding Sash' => 'Sld Sash 39Mm X 57Mm',
-            'Sliding Sash Ri' => 'Ri-32.6Mm X 13Mm X 24.6Mm X 15.4Mm-1.5Mm',
-            'Track' => 'Sld 3Track 108Mm X 50Mm',
-            'Track Ri' => 'Ri-13Mm X 28Mm-1Mm',
-        ] : [
-            'Profile Color' => 'WHITE',
-            'MeshType' => 'No',
-            'Casement Sash' => 'Cmt Outward Sash 60Mm X 104Mm',
-            'Casement Sash Ri' => 'Ri-34Mm X 49Mm X 48Mm X 10Mm-1.5Mm',
-            'Outer' => 'Cmt Outer 60Mm X 60Mm',
-            'Outer Ri' => 'Ri-27Mm X 22Mm-1.5Mm',
-            'Door Panel' => 'Door Panel 100Mm X 15Mm',
-            'Sash Mullion' => 'Cmt T-Mullion 60Mm X 77Mm (Crc-60Tm)',
-            'Mullion Ri' => 'Ri-18Mm X 30Mm(Cc 60Tm Rf-1.5)',
-        ];
+        $defaults = ['Profile Color' => 'WHITE', 'MeshType' => 'No']; // profile dimensions come from the product
 
         // Merge user provided data over defaults
         $merged = array_merge($defaults, is_array($data) ? array_filter($data, fn($v) => !is_null($v) && trim($v) !== '') : []);

@@ -58,6 +58,25 @@
             </script>
             <a href="{{ route('quotations.showBom', $quotation->id) }}" class="btn btn-success btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-list-check"></i> Factory BOM</a>
             
+            @if($quotation->status === 'Approved')
+                <form action="{{ route('quotations.status', $quotation->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="status" value="Sent">
+                    <button type="submit" class="btn btn-info btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-send"></i> Mark as Sent</button>
+                </form>
+            @elseif($quotation->status === 'Sent')
+                <form action="{{ route('quotations.status', $quotation->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="status" value="Accepted">
+                    <button type="submit" class="btn btn-success btn-sm px-3 fw-bold shadow-sm"><i class="bi bi-hand-thumbs-up"></i> Customer Accepted</button>
+                </form>
+                <form action="{{ route('quotations.status', $quotation->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="status" value="Rejected">
+                    <button type="submit" class="btn btn-outline-danger btn-sm px-3 fw-bold shadow-sm" onclick="return confirm('Mark this quotation as rejected?');"><i class="bi bi-hand-thumbs-down"></i> Customer Rejected</button>
+                </form>
+            @endif
+            @if($quotation->status === 'Draft')
             @if($validationResult->canApprove)
                 <form action="{{ route('quotations.approve', $quotation->id) }}" method="POST" class="d-inline">
                     @csrf
@@ -67,6 +86,7 @@
                 <button type="button" class="btn btn-primary btn-sm disabled" data-bs-toggle="tooltip" title="Validation Score must be 100% to approve">
                     <i class="bi bi-lock-fill"></i> Approve (Blocked)
                 </button>
+            @endif
             @endif
         </div>
     </div>

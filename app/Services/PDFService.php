@@ -36,7 +36,7 @@ class PDFService
                 'company' => $quotation->companySetting ?? \App\Models\CompanySetting::forCompany($quotation->company_id)
             ])
             ->setPaper('a4', 'portrait')
-            ->setOption('isPhpEnabled', false)
+            ->setOption('isPhpEnabled', true) // needed for the footer text/php script; values are var_export-escaped
             ->setOption('isRemoteEnabled', false)
             ->setOption('isHtml5ParserEnabled', true);
 
@@ -68,9 +68,9 @@ class PDFService
         $relativePath = (string) $quotation->pdf_path;
         $isPrivate = str_starts_with($relativePath, self::DIRECTORY . '/');
 
-        if (!$isPrivate || !Storage::disk(self::DISK)->exists($relativePath)) {
+        if (!$isPrivate || $quotation->pdf_stale || !Storage::disk(self::DISK)->exists($relativePath)) {
             $relativePath = $this->generateQuotationPDF($quotation);
-            $quotation->update(['pdf_path' => $relativePath]);
+            $quotation->update(['pdf_path' => $relativePath, 'pdf_stale' => false]);
         }
 
         return Storage::disk(self::DISK)->path($relativePath);

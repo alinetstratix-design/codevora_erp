@@ -20,7 +20,7 @@
 <div class="row mb-3">
     <div class="col-md-3">
         <label class="form-label fw-bold">Profile Brand</label>
-        <input type="text" name="profile_brand" class="form-control @error('profile_brand') is-invalid @enderror" value="{{ old('profile_brand', $product->profile_brand ?? 'CORA') }}" placeholder="e.g. CORA">
+        <input type="text" name="profile_brand" class="form-control @error('profile_brand') is-invalid @enderror" value="{{ old('profile_brand', $product->profile_brand ?? '') }}" placeholder="e.g. CORA">
         @error('profile_brand')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-3">
@@ -53,7 +53,7 @@
     </div>
     <div class="col-md-4">
         <label class="form-label fw-bold">Hardware Brand</label>
-        <input type="text" name="hardware_brand" class="form-control @error('hardware_brand') is-invalid @enderror" value="{{ old('hardware_brand', $product->hardware_brand ?? 'CORA Hardware') }}" placeholder="e.g. CORA Hardware">
+        <input type="text" name="hardware_brand" class="form-control @error('hardware_brand') is-invalid @enderror" value="{{ old('hardware_brand', $product->hardware_brand ?? '') }}" placeholder="e.g. CORA Hardware">
         @error('hardware_brand')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>

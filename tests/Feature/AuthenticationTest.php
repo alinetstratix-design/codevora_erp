@@ -16,7 +16,7 @@ class AuthenticationTest extends TestCase
     {
         $response = $this->get('/login');
         $response->assertStatus(200);
-        $response->assertSee('EVA ERP');
+        $response->assertSee('Codevora AI');
     }
 
     public function test_user_can_authenticate_using_login_screen()

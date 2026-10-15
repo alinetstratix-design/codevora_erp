@@ -15,7 +15,7 @@ class CompanyDTO
 
     public function __construct(array $data = [])
     {
-        $this->companyName = $data['company_name'] ?? config('app.name', 'Codevora ERP');
+        $this->companyName = $data['company_name'] ?? config('app.name', 'Codevora AI');
         $this->logo = $data['logo'] ?? '';
         $this->address = $data['address'] ?? '';
         $this->phone = $data['phone'] ?? '';

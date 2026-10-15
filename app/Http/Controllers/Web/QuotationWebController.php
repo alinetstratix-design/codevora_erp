@@ -15,6 +15,7 @@ use App\Services\QuotationService;
 use App\Services\QuotationValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
@@ -36,9 +37,26 @@ class QuotationWebController extends Controller
         $this->validationService = $validationService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $quotations = Quotation::with('customer')->orderBy('id', 'desc')->paginate(10);
+        $query = Quotation::with('customer')->orderBy('id', 'desc');
+
+        if ($request->filled('status') && in_array($request->status, \App\Constants\QuotationStatus::all(), true)) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('q')) {
+            $term = '%' . trim($request->q) . '%';
+            // Grouped, so the company scope still applies to the whole search.
+            $query->where(function ($q) use ($term) {
+                $q->where('quotation_number', 'like', $term)
+                  ->orWhere('client_name', 'like', $term)
+                  ->orWhere('project_name', 'like', $term);
+            });
+        }
+
+        $quotations = $query->paginate(10)->withQueryString();
+
         return view('quotations.index', compact('quotations'));
     }
 
@@ -217,14 +235,6 @@ class QuotationWebController extends Controller
     {
         $quotation->load(['items.sizes', 'customer', 'companySetting']);
 
-        // Ensures the stored PDF exists (regenerated only when missing, on the private disk).
-        try {
-            $this->pdfService->getPhysicalPath($quotation);
-            $quotation->refresh();
-        } catch (\Throwable $e) {
-            Log::warning("Could not generate PDF for quotation {$quotation->id}: " . $e->getMessage());
-        }
-
         $validationResult = $this->validationService->validate($quotation);
         $shareLinks = $this->shareLinks($quotation);
 
@@ -300,17 +310,73 @@ class QuotationWebController extends Controller
     {
         $this->authorize('approve', $quotation);
 
-        $quotation->load(['items.sizes', 'customer', 'companySetting']);
-        $validationResult = $this->validationService->validate($quotation);
+        $outcome = DB::transaction(function () use ($quotation) {
+            $locked = Quotation::query()->whereKey($quotation->id)->lockForUpdate()->firstOrFail();
 
-        if (!$validationResult->canApprove) {
-            $failedMsgs = implode(', ', array_map(fn ($f) => $f->label, $validationResult->failedChecks));
-            return redirect()->back()->with('error', "Quotation cannot be approved! Commercial Validation score is {$validationResult->scorePercent}%. Fix missing items: {$failedMsgs}");
+            if ($locked->status !== \App\Constants\QuotationStatus::DRAFT) {
+                return ['approved' => false, 'message' => "Only draft quotations can be approved. Current status: {$locked->status}."];
+            }
+
+            $locked->load(['items.sizes', 'customer', 'companySetting']);
+            $validationResult = $this->validationService->validate($locked);
+
+            if (!$validationResult->canApprove) {
+                $failedMsgs = implode(', ', array_map(fn ($f) => $f->label, $validationResult->failedChecks));
+                return [
+                    'approved' => false,
+                    'message' => "Quotation cannot be approved! Commercial Validation score is {$validationResult->scorePercent}%. Fix missing items: {$failedMsgs}",
+                ];
+            }
+
+            $locked->update(['status' => \App\Constants\QuotationStatus::APPROVED]);
+
+            return ['approved' => true, 'message' => null];
+        });
+
+        if (!$outcome['approved']) {
+            return redirect()->back()->with('error', $outcome['message']);
         }
 
-        $quotation->update(['status' => \App\Constants\QuotationStatus::APPROVED]);
-
         return redirect()->route('quotations.show', $quotation->id)->with('success', 'Quotation validated 100% and approved.');
+    }
+
+    /**
+     * Customer-facing lifecycle after approval:
+     *   Approved -> Sent -> Accepted | Rejected
+     * Draft quotations must be approved first. Accepted and Rejected are final.
+     */
+    public function updateStatus(Request $request, Quotation $quotation)
+    {
+        $data = $request->validate([
+            'status' => ['required', \Illuminate\Validation\Rule::in([
+                \App\Constants\QuotationStatus::SENT,
+                \App\Constants\QuotationStatus::ACCEPTED,
+                \App\Constants\QuotationStatus::REJECTED,
+            ])],
+        ]);
+
+        $next = $data['status'];
+
+        $transitions = [
+            \App\Constants\QuotationStatus::APPROVED => [\App\Constants\QuotationStatus::SENT],
+            \App\Constants\QuotationStatus::SENT => [\App\Constants\QuotationStatus::ACCEPTED, \App\Constants\QuotationStatus::REJECTED],
+        ];
+
+        $error = DB::transaction(function () use ($quotation, $next, $transitions) {
+            $locked = Quotation::query()->whereKey($quotation->id)->lockForUpdate()->firstOrFail();
+
+            if (!in_array($next, $transitions[$locked->status] ?? [], true)) {
+                return "A quotation with status {$locked->status} cannot be marked as {$next}.";
+            }
+
+            $locked->update(['status' => $next]);
+
+            return null;
+        });
+
+        return $error
+            ? back()->with('error', $error)
+            : back()->with('success', "Quotation marked as {$next}.");
     }
 
     public function previewPdf(Quotation $quotation)

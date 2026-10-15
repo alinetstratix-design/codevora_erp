@@ -25,21 +25,21 @@ class DevelopmentSeeder extends Seeder
             [
                 'name' => 'Ajeem Ali',
                 'email' => 'admin@nexoratech.in',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
                 'role' => 'Admin',
                 'status' => 'Active',
             ],
             [
                 'name' => 'Rahul Singh',
                 'email' => 'rahul.sales@fabriworks.in',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
                 'role' => 'Manager',
                 'status' => 'Active',
             ],
             [
                 'name' => 'Guest User',
                 'email' => 'guest@fabriworks.in',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
                 'role' => 'Staff',
                 'status' => 'Inactive',
             ]

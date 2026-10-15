@@ -25,7 +25,7 @@ class BomItemDTO
         $this->materialCategory = $data['material_category'] ?? 'Profile';
         $this->materialName = $data['material_name'] ?? 'Generic Material';
         $this->sku = $data['sku'] ?? 'SKU-GENERIC';
-        $this->supplier = $data['supplier'] ?? 'CORA System';
+        $this->supplier = $data['supplier'] ?? '—';
         $this->unit = $data['unit'] ?? 'Pcs';
         $this->length = (float)($data['length'] ?? 0);
         $this->width = (float)($data['width'] ?? 0);

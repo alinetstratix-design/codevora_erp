@@ -12,6 +12,10 @@ class DashboardWebController extends Controller
 {
     public function index()
     {
+        if (auth()->user()->isSuperAdmin()) {
+            return redirect()->route('platform.index');
+        }
+
         $totalCustomers = Customer::count();
         $totalQuotations = Quotation::count();
         $draftQuotations = Quotation::where('status', 'Draft')->count();

@@ -19,20 +19,7 @@ class AccessoryDTO
     {
         $isSliding = stripos($systemName, 'SLIDING') !== false;
 
-        $defaults = $isSliding ? [
-            'Locking' => 'Single-point',
-            'Handle color' => 'WHITE',
-            'Flymesh Handle Type' => 'S3-Sld C Handle',
-            'Handle Type' => 'S1-Sld Touch Lock Left',
-            'Roller' => 'Single Wheel With Groove',
-        ] : [
-            'Locking' => 'Multi-point',
-            'Handle color' => 'WHITE',
-            'Arm Restrictor' => 'Restrictor Arm 10"',
-            'Cylinder' => 'Cylinder',
-            'Handle Type' => 'S1-Casement Double Side Door Handle With Key',
-            'Hinge' => 'S1-3D Hinges',
-        ];
+        $defaults = ['Handle color' => 'WHITE']; // accessories come from the product
 
         $merged = array_merge($defaults, is_array($data) ? array_filter($data, fn($v) => !is_null($v) && trim($v) !== '') : []);
 

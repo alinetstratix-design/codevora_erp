@@ -253,6 +253,7 @@ class QuotationReportBuilder
             $hardware = new HardwareDTO($itemData);
             $accessory = new AccessoryDTO($item->accessories_details ?? [], $system);
 
+            $itemData['company_specs'] = $this->companySpecs($quotation);
             $itemData['item_code'] = $item->item_code ?? ('W' . ($index + 1));
             $itemData['position'] = $item->position ?? $itemData['item_code'];
             $itemData['sizes'] = $sizeRows;
@@ -262,6 +263,29 @@ class QuotationReportBuilder
         }
 
         return $items;
+    }
+
+    /**
+     * Company-owned product specifications, inclusions and exclusions for item cards.
+     */
+    private function companySpecs(Quotation $quotation): array
+    {
+        $setting = $quotation->companySetting ?? CompanySetting::forCompany($quotation->company_id);
+
+        return [
+            'wall_thickness' => $setting?->item_specs['wall_thickness'] ?? null,
+            'insulation_chambers' => $setting?->item_specs['insulation_chambers'] ?? null,
+            'steel_reinforcement' => $setting?->item_specs['steel_reinforcement'] ?? null,
+            'glass_make' => $setting?->item_specs['glass_make'] ?? null,
+            'glass_performance' => $setting?->item_specs['glass_performance'] ?? null,
+            'locking_system' => $setting?->item_specs['locking_system'] ?? null,
+            'hinges_stays' => $setting?->item_specs['hinges_stays'] ?? null,
+            'drainage_system' => $setting?->item_specs['drainage_system'] ?? null,
+            'warranty' => $setting?->item_specs['warranty'] ?? null,
+            'delivery_timeline' => $setting?->item_specs['delivery_timeline'] ?? null,
+            'inclusions' => $setting?->inclusions ?? [],
+            'exclusions' => $setting?->exclusions ?? [],
+        ];
     }
 
     public function buildTerms(Quotation $quotation): TermsDTO
@@ -291,6 +315,6 @@ class QuotationReportBuilder
 
     public function buildFooter(Quotation $quotation): FooterDTO
     {
-        return new FooterDTO('{PAGE_NUM} of {PAGE_COUNT}', 'powered by Codevora Tech');
+        return new FooterDTO('{PAGE_NUM} of {PAGE_COUNT}', config('quotation_defaults.footer_powered_by'));
     }
 }

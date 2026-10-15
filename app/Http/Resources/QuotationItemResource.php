@@ -20,7 +20,7 @@ class QuotationItemResource extends JsonResource
             'item_code' => $this->item_code ?? $this->position,
             'position' => $this->position,
             'system_name' => $this->system_name ?? $this->product_name,
-            'profile_system' => $this->profile_system ?? 'CORA - 60MM CASEMENT SERIES',
+            'profile_system' => $this->profile_system ?? '—',
             'qty' => (int) ($this->qty ?? $this->quantity ?? 1),
             'dimension_w' => (float) ($this->dimension_w ?? $this->width ?? 0),
             'dimension_h' => (float) ($this->dimension_h ?? $this->height ?? 0),

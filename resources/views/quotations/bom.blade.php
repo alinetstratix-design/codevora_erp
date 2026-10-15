@@ -7,7 +7,7 @@
     <h4 class="text-primary mb-0"><i class="bi bi-list-check"></i> Production-Grade Fabrication BOM — {{ $quotation->quotation_number ?? $quotation->quote_no }}</h4>
     <div>
         <a href="{{ route('quotations.show', $quotation->id) }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Quote</a>
-        <a href="{{ route('quotations.downloadPdf', $quotation->id) }}" class="btn btn-danger"><i class="bi bi-file-pdf"></i> Download EvA PDF</a>
+        <a href="{{ route('quotations.downloadPdf', $quotation->id) }}" class="btn btn-danger"><i class="bi bi-file-pdf"></i> Download PDF</a>
     </div>
 </div>
 

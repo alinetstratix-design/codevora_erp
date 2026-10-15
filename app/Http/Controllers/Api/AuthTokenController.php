@@ -20,7 +20,7 @@ class AuthTokenController extends Controller
 
         $user = User::where('email', $data['email'])->where('status', 'Active')->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        if (!$user || !$user->canSignIn() || !Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);

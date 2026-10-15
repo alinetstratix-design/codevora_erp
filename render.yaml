@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: fqmsapi-4cbp
+    name: codevora-ai-erp
     env: docker
     plan: free
     region: singapore
@@ -13,7 +13,7 @@ services:
       - key: APP_URL
         sync: false
       - key: APP_KEY
-        generateValue: true
+        sync: false
       - key: LOG_CHANNEL
         value: stderr
       - key: SESSION_SECURE_COOKIE
@@ -21,14 +21,12 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        value: dpg-db5htg8473hc73b804lg-a
+        sync: false
       - key: DB_PORT
         value: "5432"
       - key: DB_DATABASE
-        value: fqms_user
+        sync: false
       - key: DB_USERNAME
-        value: fqms_user
+        sync: false
       - key: DB_PASSWORD
-        value: gT0riMRqiy0LJ2hiAm1PQnYFx6xNLdHV
-      - key: DATABASE_URL
-        value: postgresql://fqms_user:gT0riMRqiy0LJ2hiAm1PQnYFx6xNLdHV@dpg-db5htg8473hc73b804lg-a:5432/fqms_user
+        sync: false

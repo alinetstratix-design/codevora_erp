@@ -9,6 +9,23 @@
         <a href="{{ route('quotations.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> Create Quotation</a>
     </div>
     <div class="card-body">
+        <form method="GET" action="{{ route('quotations.index') }}" class="row g-2 mb-3">
+            <div class="col-md-5">
+                <input type="text" name="q" value="{{ request('q') }}" class="form-control" placeholder="Search quote no, client or project">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">All statuses</option>
+                    @foreach(\App\Constants\QuotationStatus::all() as $statusOption)
+                        <option value="{{ $statusOption }}" @selected(request('status') === $statusOption)>{{ $statusOption }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Filter</button>
+                <a href="{{ route('quotations.index') }}" class="btn btn-link">Reset</a>
+            </div>
+        </form>
         <div class="table-responsive">
             <table class="table table-hover table-bordered align-middle">
                 <thead class="table-light">
@@ -31,7 +48,7 @@
                         <td>{{ $quote->project_name ?? '-' }}</td>
                         <td>₹{{ number_format($quote->grand_total, 2) }}</td>
                         <td>
-                            <span class="badge {{ $quote->status == 'Approved' ? 'bg-success' : ($quote->status == 'Draft' ? 'bg-secondary' : 'bg-primary') }}">
+                            <span class="badge {{ in_array($quote->status, ['Approved', 'Accepted']) ? 'bg-success' : ($quote->status == 'Draft' ? 'bg-secondary' : ($quote->status == 'Rejected' ? 'bg-danger' : 'bg-primary')) }}">
                                 {{ $quote->status }}
                             </span>
                         </td>

@@ -58,8 +58,8 @@ class ItemDTO
         $this->itemCode = $data['item_code'] ?? $data['code'] ?? 'W1';
         $this->name = $data['product_name'] ?? $data['system_name'] ?? $this->itemCode;
         $this->position = $data['position'] ?? $this->itemCode;
-        $this->profileSystem = $data['profile_system'] ?? $data['profile_series'] ?? $data['system_name'] ?? 'CORA - 60MM CASEMENT SERIES';
-        $this->location = $data['location'] ?? 'Master Bedroom';
+        $this->profileSystem = $data['profile_system'] ?? $data['profile_series'] ?? $data['system_name'] ?? '—';
+        $this->location = $data['location'] ?? '—';
 
         $this->width = (float)($data['width'] ?? $data['dimension_w'] ?? 0);
         $this->height = (float)($data['height'] ?? $data['dimension_h'] ?? 0);
@@ -97,51 +97,40 @@ class ItemDTO
         $this->hardware = $hardware ?? new HardwareDTO($data);
         $this->accessory = $accessory ?? new AccessoryDTO($data['accessories_details'] ?? []);
 
-        // 35 Customer-Facing Commercial Specifications
+        // Company-owned specifications come from Company Settings. Missing values print as a dash.
+        $company = $data['company_specs'] ?? [];
+        $v = static function ($value): string {
+            return ($value === null || trim((string) $value) === '') ? '—' : (string) $value;
+        };
+
         $this->commercialSpecs = [
-            'Window / Door Type' => $data['opening_type'] ?? 'Casement Window Outward',
-            'Profile Brand' => $data['profile_brand'] ?? 'CORA',
+            'Window / Door Type' => $v($data['opening_type'] ?? null),
+            'Profile Brand' => $v($data['profile_brand'] ?? null),
             'Profile Series' => $this->profileSystem,
-            'Profile Color' => $this->profile->color ?? ($data['color'] ?? ($data['profile_color'] ?? 'WHITE')),
-            'Wall Thickness' => '2.5 mm Class A',
-            'Insulation Chambers' => '3-Chamber High Thermal',
-            'Steel Reinforcement' => 'Yes (Galvanized Steel 1.5mm Box)',
-            'Glass Make' => 'Saint-Gobain Glass',
-            'Glass Type' => $this->glass->type ?? '5mm Clear Toughened',
-            'Glass Thickness' => $this->glass->thickness ?? ($data['glass_thickness'] ?? '5.0 mm'),
-            'Glass Performance' => 'Acoustic & Solar Control',
-            'Mosquito Mesh' => $data['mesh_type'] ?? ($this->profile->meshType ?? 'No Mesh'),
-            'Hardware Brand' => $this->hardware->brand ?? 'CORA Hardware',
-            'Hardware Finish' => $this->hardware->color ?? 'White Powder Coated',
-            'Locking System' => 'Multi-point Security Lock',
-            'Handle Type' => $data['handle_type'] ?? 'Ergonomic Espag Handle',
-            'Hinges / Stays' => 'SS304 Friction Hinge Stay',
-            'Drainage System' => 'Concealed Water Drainage Caps',
-            'Warranty' => '10 Years Profile / 1 Year Hardware',
-            'Delivery Timeline' => '2 to 3 Weeks from Order Confirmation',
+            'Profile Color' => $v($this->profile->color ?? ($data['color'] ?? ($data['profile_color'] ?? null))),
+            'Wall Thickness' => $v($company['wall_thickness'] ?? null),
+            'Insulation Chambers' => $v($company['insulation_chambers'] ?? null),
+            'Steel Reinforcement' => $v($company['steel_reinforcement'] ?? null),
+            'Glass Make' => $v($company['glass_make'] ?? null),
+            'Glass Type' => $v($this->glass->type ?? null),
+            'Glass Thickness' => $v($this->glass->thickness ?? ($data['glass_thickness'] ?? null)),
+            'Glass Performance' => $v($company['glass_performance'] ?? null),
+            'Mosquito Mesh' => $v($data['mesh_type'] ?? ($this->profile->meshType ?? 'No Mesh')),
+            'Hardware Brand' => $v($this->hardware->brand),
+            'Hardware Finish' => $v($this->hardware->color),
+            'Locking System' => $v($company['locking_system'] ?? null),
+            'Handle Type' => $v($data['handle_type'] ?? null),
+            'Hinges / Stays' => $v($company['hinges_stays'] ?? null),
+            'Drainage System' => $v($company['drainage_system'] ?? null),
+            'Warranty' => $v($company['warranty'] ?? null),
+            'Delivery Timeline' => $v($company['delivery_timeline'] ?? null),
         ];
 
         // Customer Inclusions List
-        $this->inclusions = [
-            '✓ Complete Window & Frame Assembly',
-            '✓ Toughened Glass & Snap-in Beading',
-            '✓ Multi-point Security Locking System',
-            '✓ Espag Handle & SS Friction Stays',
-            '✓ On-site Professional Installation',
-            '✓ Weatherproof Silicone Perimeter Seal',
-            '✓ Stainless Steel Fasteners & Screws',
-            '✓ EPDM Rubber Weather Seals',
-        ];
+        $this->inclusions = array_values(array_filter($company['inclusions'] ?? [], fn ($line) => trim((string) $line) !== ''));
 
         // Customer Exclusions List
-        $this->exclusions = [
-            '✗ Civil & Masonry Alteration Work',
-            '✗ Electrical & Wiring Work',
-            '✗ Wall Painting & Touch-up Work',
-            '✗ POP, Tile & Granite Repair',
-            '✗ External Scaffolding & Heavy Crane',
-            '✗ On-site Power Generator',
-        ];
+        $this->exclusions = array_values(array_filter($company['exclusions'] ?? [], fn ($line) => trim((string) $line) !== ''));
     }
 
     public function toArray(): array

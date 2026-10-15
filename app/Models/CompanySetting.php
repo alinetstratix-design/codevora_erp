@@ -24,6 +24,9 @@ class CompanySetting extends Model
         'installation_prerequisites',
         'authorized_signature',
         'default_tax_percent',
+        'item_specs',
+        'inclusions',
+        'exclusions',
     ];
 
     protected $casts = [
@@ -31,6 +34,9 @@ class CompanySetting extends Model
         'terms_conditions' => 'array',
         'installation_prerequisites' => 'array',
         'default_tax_percent' => 'float',
+        'item_specs' => 'array',
+        'inclusions' => 'array',
+        'exclusions' => 'array',
     ];
 
     public function company()

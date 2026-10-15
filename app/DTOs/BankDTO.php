@@ -8,10 +8,7 @@ class BankDTO
 
     public function __construct(array $bankDetails = [])
     {
-        $this->bankDetails = !empty($bankDetails) ? $bankDetails : [
-            '50% Advance with Order',
-            '50% Before Delivery / Dispatch'
-        ];
+        $this->bankDetails = $bankDetails; // company-owned; never filled with defaults
     }
 
     public function toArray(): array

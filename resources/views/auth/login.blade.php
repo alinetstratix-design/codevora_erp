@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FQMS ERP | Sign In</title>
+    <title>Sign In | Codevora AI</title>
 
     <!-- Google Font: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -89,11 +89,16 @@
 
 <div class="login-card">
     <div class="login-header">
-        <div class="mb-2">
-            <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill"><i class="bi bi-box-seam me-1"></i> EVA ERP / FQMS</span>
+        <div class="bg-white p-2 px-3 rounded-3 d-inline-block shadow-sm mb-3">
+            <img src="{{ asset('images/framequote-logo.png') }}" alt="FrameQuote Logo" style="height: 44px; object-fit: contain;">
         </div>
-        <h2>Welcome Back</h2>
-        <p class="text-slate-400 mb-0 small opacity-75">Sign in to access your enterprise dashboard</p>
+        <div class="mb-2">
+            <span class="badge bg-primary bg-opacity-25 text-info px-3 py-1 rounded-pill small border border-info border-opacity-25">
+                <i class="bi bi-shield-check me-1"></i> By Codevora Technologies
+            </span>
+        </div>
+        <h2>Enterprise Portal</h2>
+        <p class="text-slate-400 mb-0 small opacity-75">Sign in to your quotation & fabrication workspace</p>
     </div>
 
     <div class="login-body">
@@ -128,16 +133,12 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="remember" id="remember" checked>
-                    <label class="form-check-label small text-muted" for="remember">Remember me</label>
-                </div>
-            </div>
-
             <button type="submit" class="btn btn-primary w-100 mb-3 shadow-sm">
                 <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
             </button>
+                <div class="text-center mt-3">
+                    <a href="{{ route('password.request') }}" class="small text-decoration-none">Forgot password?</a>
+                </div>
         </form>
 </div>
 </div>

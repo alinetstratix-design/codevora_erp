@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
+use App\Constants\QuotationStatus;
 use App\Models\CompanySetting;
+use App\Models\Quotation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class CompanySettingService
 {
     /** Textarea fields that the PDF renders as lists (one entry per line). */
-    private const LIST_FIELDS = ['bank_details', 'terms_conditions', 'installation_prerequisites'];
+    private const LIST_FIELDS = ['bank_details', 'terms_conditions', 'installation_prerequisites', 'inclusions', 'exclusions'];
 
     public function updateSettings(int $companyId, array $data, $logoFile = null, $signatureFile = null)
     {
@@ -23,6 +25,10 @@ class CompanySettingService
                 if (array_key_exists($field, $data)) {
                     $data[$field] = $this->textToLines($data[$field]);
                 }
+            }
+
+            if (array_key_exists('item_specs', $data)) {
+                $data['item_specs'] = array_map(fn ($value) => trim((string) ($value ?? '')), (array) $data['item_specs']);
             }
 
             $setting->fill($data);
@@ -45,6 +51,14 @@ class CompanySettingService
             }
 
             $setting->save();
+
+            // Draft PDFs are rebuilt with the new settings on their next download.
+            // Approved, sent, accepted and rejected quotations keep their snapshot: their terms were agreed.
+            Quotation::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->where('status', QuotationStatus::DRAFT)
+                ->update(['pdf_stale' => true]);
+
             return $setting;
         });
     }

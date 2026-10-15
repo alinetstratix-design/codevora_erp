@@ -101,6 +101,12 @@ class QuotationService
         $calculated = $this->assertBomComplete($this->calculateQuotationData($data));
 
         return DB::transaction(function () use ($quotation, $calculated) {
+            // Lock the row so a concurrent approval cannot slip in between the check and the write.
+            $quotation = Quotation::query()->whereKey($quotation->id)->lockForUpdate()->firstOrFail();
+            if ($quotation->status === QuotationStatus::APPROVED) {
+                throw ValidationException::withMessages(['status' => ['Approved quotations cannot be edited.']]);
+            }
+
             $quotationData = $calculated['quotation_data'];
             unset($quotationData['quotation_number'], $quotationData['status'], $quotationData['company_id']);
 
@@ -171,7 +177,7 @@ class QuotationService
         $previousPath = $quotation->pdf_path;
 
         $pdfPath = $this->pdfService->generateQuotationPDF($quotation);
-        $quotation->update(['pdf_path' => $pdfPath]);
+        $quotation->update(['pdf_path' => $pdfPath, 'pdf_stale' => false]);
 
         // Keep storage tidy: the superseded PDF is removed once the new one is saved.
         // Legacy rows ('storage/...') live on the public disk and are removed from there.

@@ -54,7 +54,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Default Bank Details</label>
-                            <textarea name="bank_details" class="form-control" rows="4" placeholder="50% Advance with Order&#10;50% Before Delivery">{{ old('bank_details', is_array($setting->bank_details) ? implode("\n", $setting->bank_details) : $setting->bank_details) }}</textarea>
+                            <textarea name="bank_details" class="form-control" rows="4" placeholder="Bank name, account name, account number, IFSC&#10;One detail per line">{{ old('bank_details', is_array($setting->bank_details) ? implode("\n", $setting->bank_details) : $setting->bank_details) }}</textarea>
                             <small class="text-muted">Enter each payment term on a new line.</small>
                         </div>
                         <div class="col-md-6">
@@ -69,6 +69,36 @@
                             <label class="form-label fw-bold">Pre-Requisites for Installation of Windows</label>
                             <textarea name="installation_prerequisites" class="form-control" rows="4" placeholder="1. Walls plastered inside and outside...&#10;2. Jams, sills plastered...">{{ old('installation_prerequisites', is_array($setting->installation_prerequisites) ? implode("\n", $setting->installation_prerequisites) : $setting->installation_prerequisites) }}</textarea>
                             <small class="text-muted">Enter each installation prerequisite clause on a new line.</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Product Specifications (printed on every item card)</label>
+                            <small class="d-block text-muted mb-2">Enter your own values. Empty fields print as "—" and block approval until filled.</small>
+                            <div class="row g-2">
+                                @foreach(config('quotation_defaults.item_spec_fields') as $specKey => $specField)
+                                    <div class="col-md-6">
+                                        <label for="spec_{{ $specKey }}" class="form-label small mb-1">{{ $specField[0] }}</label>
+                                        <input type="text" id="spec_{{ $specKey }}" name="item_specs[{{ $specKey }}]" class="form-control form-control-sm" maxlength="500"
+                                               value="{{ old('item_specs.' . $specKey, ($setting->item_specs ?? [])[$specKey] ?? '') }}"
+                                               placeholder="{{ $specField[1] }}">
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Inclusions</label>
+                            <textarea name="inclusions" class="form-control" rows="5" placeholder="One item per line">{{ old('inclusions', is_array($setting->inclusions) ? implode("\n", $setting->inclusions) : '') }}</textarea>
+                            <small class="text-muted">Required. Shown as ✓ items on each product card.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Exclusions</label>
+                            <textarea name="exclusions" class="form-control" rows="5" placeholder="One item per line">{{ old('exclusions', is_array($setting->exclusions) ? implode("\n", $setting->exclusions) : '') }}</textarea>
+                            <small class="text-muted">Optional. Shown as ✗ items on each product card.</small>
                         </div>
                     </div>
 

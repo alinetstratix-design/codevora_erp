@@ -7,7 +7,7 @@ class FooterDTO
     public string $pageTextFormat;
     public string $poweredBy;
 
-    public function __construct(string $pageTextFormat = '{PAGE_NUM} of {PAGE_COUNT}', string $poweredBy = 'powered by Codevora Tech')
+    public function __construct(string $pageTextFormat = '{PAGE_NUM} of {PAGE_COUNT}', string $poweredBy = 'Powered by Codevora AI')
     {
         $this->pageTextFormat = $pageTextFormat;
         $this->poweredBy = $poweredBy;

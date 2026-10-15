@@ -9,7 +9,7 @@ class HardwareDTO
 
     public function __construct(array $data = [])
     {
-        $this->brand = $data['hardware_brand'] ?? 'CORA Hardware';
+        $this->brand = $data['hardware_brand'] ?? '—';
         $this->color = $data['hardware_color'] ?? 'WHITE';
     }
 

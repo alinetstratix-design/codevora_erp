@@ -48,6 +48,7 @@ class Quotation extends Model
         'grand_total',
         'amount_in_words',
         'pdf_path',
+        'pdf_stale',
         'total_project_cost',
         'avg_price_sqft_ex_gst',
         'avg_price_sqft_inc_gst',

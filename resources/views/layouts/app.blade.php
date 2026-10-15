@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FQMS | @yield('title', 'Dashboard')</title>
+    <title>Codevora AI | @yield('title', 'Dashboard')</title>
 
     <!-- Google Font: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -65,11 +65,24 @@
 <div class="d-flex">
     <!-- Main Sidebar Container -->
     <aside class="sidebar p-3" style="width: 250px;">
-        <a href="{{ route('dashboard') }}" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-            <span class="fs-4 fw-bold"><i class="bi bi-box"></i> FQMS</span>
+        <a href="{{ route('dashboard') }}" class="d-flex flex-column mb-3 text-white text-decoration-none">
+            <div class="bg-white p-2 rounded-2 mb-2 text-center">
+                <img src="{{ asset('images/framequote-logo.png') }}" alt="FrameQuote Logo" style="height: 32px; object-fit: contain;">
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="badge bg-primary bg-opacity-25 text-info" style="font-size: 10px;">By Codevora</span>
+                <small class="text-white-50 text-truncate" style="max-width: 130px;">{{ auth()->user()?->company?->name ?? 'Platform' }}</small>
+            </div>
         </a>
         <hr class="text-white-50">
         <ul class="nav nav-pills flex-column mb-auto mt-3">
+            @if(auth()->user()?->isSuperAdmin())
+            <li>
+                <a href="{{ route('platform.index') }}" class="nav-link {{ request()->routeIs('platform.*') ? 'active' : '' }}">
+                    <i class="bi bi-buildings me-2"></i> Companies
+                </a>
+            </li>
+            @else
             <li class="nav-item">
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <i class="bi bi-speedometer2 me-2"></i> Dashboard
@@ -96,13 +109,20 @@
                     <i class="bi bi-layers me-2"></i> Master Data
                 </a>
             </li>
-            @endif
-            <hr class="text-white-50">
             <li>
                 <a href="{{ route('company.edit') }}" class="nav-link {{ request()->routeIs('company.*') ? 'active' : '' }}">
                     <i class="bi bi-gear me-2"></i> Settings
                 </a>
             </li>
+            @endif
+            @if(auth()->user()?->role === 'Admin')
+            <li>
+                <a href="{{ route('team.index') }}" class="nav-link {{ request()->routeIs('team.*') ? 'active' : '' }}">
+                    <i class="bi bi-person-gear me-2"></i> Team
+                </a>
+            </li>
+            @endif
+            @endif
         </ul>
     </aside>
 
@@ -120,6 +140,7 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                             <li><span class="dropdown-item-text small text-muted">{{ auth()->user()->email ?? '' }}</span></li>
+                            <li><a class="dropdown-item" href="{{ route('account.password.edit') }}"><i class="bi bi-key me-1"></i> Change password</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
@@ -144,6 +165,20 @@
                 </div>
             @endif
 
+@if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+            @if(session('temp_password'))
+                <div class="alert alert-warning" role="alert">
+                    <strong>Temporary password (shown once):</strong>
+                    <div>Email: <code>{{ session('temp_email') }}</code></div>
+                    <div>Password: <code>{{ session('temp_password') }}</code></div>
+                    <div class="small">Share it securely. The user must choose a new password at first sign-in.</div>
+                </div>
+            @endif
             @if($errors->any())
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <ul class="mb-0">
@@ -161,7 +196,7 @@
 </div>
 
 <!-- Bootstrap 5 Bundle with Popper -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 @stack('scripts')
 </body>
 </html>
